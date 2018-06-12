@@ -1,0 +1,3 @@
+external/build/*
+external/cmake_build/*
+external/output/*
