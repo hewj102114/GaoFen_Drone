@@ -36,3 +36,8 @@ cd $build_dir
 "$CMAKE" ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=../output
 make
 make install
+
+cd ../
+cp -r output/include/* ../src/airsim-ros/include
+cp -r eigen3/* ../src/airsim-ros/include
+cp -r output/lib/*.a ../src/airsim-ros/lib

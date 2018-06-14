@@ -1,3 +1,8 @@
 external/build/*
 external/cmake_build/*
 external/output/*
+.vscode/*
+build/*
+devel/*
+*.a
+*.bag
