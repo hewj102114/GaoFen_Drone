@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(airsim-ros)
 
 find_package(Threads REQUIRED)
+set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS "\
                 -std=c++14 -ggdb -Wall -Wextra -Wstrict-aliasing -Wunreachable-code -Wcast-qual -Wctor-dtor-privacy \
                 -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-include-dirs -Wswitch-default \
@@ -96,26 +97,26 @@ list(APPEND SOURCEFILES
   src/airsim_node.cpp
 )
 
-add_executable(${PROJECT_NAME}
-    src/main.cpp
+add_executable(airsim_data_recv
+    src/airsim_data_recv.cpp
     ${SOURCEFILES}
 )
 
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(airsim_data_recv
     AirLib
     rpc
    ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
  )
 
- add_executable(main1
- src/main1.cpp
+ add_executable(airsim_control
+ src/airsim_control.cpp
  ${SOURCEFILES}
 )
 
 
-target_link_libraries(main1
+target_link_libraries(airsim_control
  AirLib
  rpc
 ${catkin_LIBRARIES}

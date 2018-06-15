@@ -33,6 +33,7 @@ class AirsimNode{
     geometry_msgs::Vector3Stamped barometer_data;
 
     msr::airlib::MultirotorRpcLibClient* control_client;
+    bool RUNNING_FLAG,EXIT_FLAG;
 
     void getAirsimData(msr::airlib::MultirotorRpcLibClient* client);
     void getImuData(msr::airlib::MultirotorRpcLibClient* client);
@@ -52,7 +53,6 @@ class AirsimNode{
 
     void run();
     void flightDataThread();
-    void flightDataThread2();
     void imageFrontRgbThread();
     void imageFrontDepthThread();
     void imageDownRgbThread();

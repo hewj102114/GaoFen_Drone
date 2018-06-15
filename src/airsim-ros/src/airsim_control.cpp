@@ -9,13 +9,11 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     ros::NodeHandle private_nh("~");
 
-    AirsimNode airsim_node(&nh, "90.0.0.187");
-    // airsim_node.connect();
+    AirsimNode airsim_node(&nh, "90.0.0.196");
     ros::Rate rate(80);
-    // airsim_node.takeoff();
+    airsim_node.takeoff();
     while (ros::ok()) {
         ROS_INFO("LOOP");
-        // airsim_node.getAirsimData();
         ros::spinOnce();
         rate.sleep();
     }

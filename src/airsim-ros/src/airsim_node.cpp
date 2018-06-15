@@ -27,6 +27,9 @@ AirsimNode::AirsimNode(ros::NodeHandle* _pnh, const std::string& _ip) {
     ip_adress=_ip;
     control_client = new msr::airlib::MultirotorRpcLibClient(_ip);
     control_client->confirmConnection();
+
+    RUNNING_FLAG=0;
+    EXIT_FLAG=0;
 }
 
 AirsimNode::~AirsimNode() {  delete control_client;}
@@ -36,7 +39,6 @@ void AirsimNode::getAirsimData(msr::airlib::MultirotorRpcLibClient* client) {
     getMagneticData(client);
     getGPSData(client);
     getBarometerData(client);
-    // getImageData();
 }
 
 void AirsimNode::getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient* client) {
@@ -45,15 +47,11 @@ void AirsimNode::getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient* clien
     typedef ImageCaptureBase::ImageResponse ImageResponse;
     typedef ImageCaptureBase::ImageType ImageType;
 
-    ros::Time start=ros::Time::now();
     std::vector<ImageRequest> request = {
         ImageRequest(0, ImageType::Scene)
         };
 
     std::vector<ImageResponse> response = client->simGetImages(request);
-    std::cout << "# of images recieved: " << response.size() << std::endl;
-
-    ROS_INFO("TIME1:%f",(ros::Time::now()-start).toSec());    
 
     cv::Mat img_front_rgb=cv::imdecode(response[0].image_data_uint8, cv::IMREAD_COLOR);
 
@@ -64,7 +62,6 @@ void AirsimNode::getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient* clien
     msg_front_rgb.image = img_front_rgb;
     msg_front_rgb.encoding = sensor_msgs::image_encodings::BGR8;
     pub_image_front_rgb.publish(msg_front_rgb.toImageMsg());
-    ROS_INFO("TIME2:%f",(ros::Time::now()-start).toSec());    
 
 
 }
@@ -75,14 +72,11 @@ void AirsimNode::getImageFrontDepthData(msr::airlib::MultirotorRpcLibClient* cli
     typedef ImageCaptureBase::ImageResponse ImageResponse;
     typedef ImageCaptureBase::ImageType ImageType;
 
-    ros::Time start=ros::Time::now();
     std::vector<ImageRequest> request = {
         ImageRequest(0, ImageType::DepthPerspective, true)
         };
 
     std::vector<ImageResponse> response = client->simGetImages(request);
-
-    ROS_INFO("TIME1:%f",(ros::Time::now()-start).toSec());    
 
     cv::Mat img_front_depth(response[0].height,response[0].width,CV_32FC1,response[0].image_data_float.data());
 
@@ -100,14 +94,12 @@ void AirsimNode::getImageDownRgbData(msr::airlib::MultirotorRpcLibClient* client
     typedef ImageCaptureBase::ImageResponse ImageResponse;
     typedef ImageCaptureBase::ImageType ImageType;
 
-    ros::Time start=ros::Time::now();
+   
     std::vector<ImageRequest> request = {
         ImageRequest(3, ImageType::Scene)
         };
 
     std::vector<ImageResponse> response = client->simGetImages(request);
-
-    ROS_INFO("TIME1:%f",(ros::Time::now()-start).toSec());    
 
     cv::Mat img_down_rgb=cv::imdecode(response[0].image_data_uint8, cv::IMREAD_COLOR);
 
@@ -125,7 +117,6 @@ void AirsimNode::getAllImageData(msr::airlib::MultirotorRpcLibClient* client){
     typedef ImageCaptureBase::ImageResponse ImageResponse;
     typedef ImageCaptureBase::ImageType ImageType;
 
-    ros::Time start=ros::Time::now();
     std::vector<ImageRequest> request = {
         ImageRequest(0, ImageType::Scene),
         ImageRequest(1, ImageType::Scene),
@@ -133,10 +124,7 @@ void AirsimNode::getAllImageData(msr::airlib::MultirotorRpcLibClient* client){
         };
 
     std::vector<ImageResponse> response = client->simGetImages(request);
-    std::cout << "# of images recieved: " << response.size() << std::endl;
-
-    ROS_INFO("TIME1:%f",(ros::Time::now()-start).toSec());    
-
+   
     cv::Mat img_front_rgb=cv::imdecode(response[0].image_data_uint8, cv::IMREAD_COLOR);
     cv::Mat img_down_rgb=cv::imdecode(response[1].image_data_uint8, cv::IMREAD_COLOR);
     cv::Mat img_front_depth(response[2].height,response[2].width,CV_32FC1,response[2].image_data_float.data());
@@ -163,7 +151,6 @@ void AirsimNode::getAllImageData(msr::airlib::MultirotorRpcLibClient* client){
     pub_image_front_depth.publish(msg_front_depth.toImageMsg());
 
     
-    ROS_INFO("TIME2:%f",(ros::Time::now()-start).toSec());    
 }
 
 void AirsimNode::getImuData(msr::airlib::MultirotorRpcLibClient* client) {
@@ -215,7 +202,9 @@ void AirsimNode::getBarometerData(msr::airlib::MultirotorRpcLibClient* client) {
 }
 
 bool AirsimNode::takeoff() {
+    cout<<"AAAA   "<<control_client->isApiControlEnabled()<<endl;
     control_client->enableApiControl(true);
+        cout<<"AAAA   "<<control_client->isApiControlEnabled()<<endl;
     control_client->armDisarm(true);
     // std::cout << "Press Enter to takeoff" << std::endl; std::cin.get();
     float takeoffTimeout = 2;
@@ -241,47 +230,52 @@ void AirsimNode::flightDataThread(){
     msr::airlib::MultirotorRpcLibClient* client = new msr::airlib::MultirotorRpcLibClient(ip_adress);
     client->confirmConnection();
     ros::Rate rate(80);
-    while(ros::ok()){
+    while(RUNNING_FLAG){
         getAirsimData(client);
         ros::spinOnce();
         rate.sleep();
     }
+    ROS_INFO("Get flightData Thread Exit");
 }
 
 void AirsimNode::imageFrontRgbThread(){
     msr::airlib::MultirotorRpcLibClient* client = new msr::airlib::MultirotorRpcLibClient(ip_adress);
     client->confirmConnection();
     ros::Rate rate(20);
-    while(ros::ok()){
+    while(RUNNING_FLAG){
         getImageFrontRgbData(client);
         ros::spinOnce();
         rate.sleep();
     }
+        ROS_INFO("Get imageFrontRgb Thread Exit");
 }
 
 void AirsimNode::imageFrontDepthThread(){
     msr::airlib::MultirotorRpcLibClient* client = new msr::airlib::MultirotorRpcLibClient(ip_adress);
     client->confirmConnection();
     ros::Rate rate(20);
-    while(ros::ok()){
+    while(RUNNING_FLAG){
         getImageFrontDepthData(client);
         ros::spinOnce();
         rate.sleep();
     }
+     ROS_INFO("Get imageFrontDepth Thread Exit");
 }
 
 void AirsimNode::imageDownRgbThread(){
     msr::airlib::MultirotorRpcLibClient* client = new msr::airlib::MultirotorRpcLibClient(ip_adress);
     client->confirmConnection();
     ros::Rate rate(20);
-    while(ros::ok()){
+    while(RUNNING_FLAG){
         getImageDownRgbData(client);
         ros::spinOnce();
         rate.sleep();
     }
+     ROS_INFO("Get imageDownRgb Thread Exit");
 }
 
 void AirsimNode::run(){
+    RUNNING_FLAG=1;
     std::thread t1(&AirsimNode::imageDownRgbThread,this);
     std::thread t2(&AirsimNode::imageFrontRgbThread,this);
     std::thread t3(&AirsimNode::imageFrontDepthThread,this);
@@ -291,4 +285,6 @@ void AirsimNode::run(){
     t2.join();
     t3.join();
     t4.join();
+    ROS_INFO("Airsim Run Exit");
 }
+
