@@ -16,7 +16,7 @@ void sig(int isg_no){
     }
     else{
         ptr_airsim->RUNNING_FLAG=0;
-        ROS_INFO("Get Exit Signal");
+        ROS_INFO("Command : Get Exit Signal");
     }
 }
 
@@ -29,5 +29,5 @@ int main(int argc, char** argv) {
     ptr_airsim=&airsim_node;
     signal(SIGINT,sig);
     airsim_node.run();
-    ROS_INFO("Airsim Node Exit");
+    ROS_INFO("Exit : Airsim RecvData Node");
 }

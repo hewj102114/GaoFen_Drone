@@ -3,13 +3,12 @@ project(airsim-ros)
 
 find_package(Threads REQUIRED)
 set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_FLAGS "\
-                -std=c++14 -ggdb -Wall -Wextra -Wstrict-aliasing -Wunreachable-code -Wcast-qual -Wctor-dtor-privacy \
-                -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-include-dirs -Wswitch-default \
-                -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wstrict-overflow=5 -Wswitch-default -Wundef \
-                -Wno-variadic-macros -Wno-parentheses -Wno-unused-function -Wno-unused -Wno-documentation -fdiagnostics-show-option \
-                -pthread \
-                 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-std=c++14 -ggdb -Wall -O3 -pthread ${CMAKE_CXX_FLAGS}")
+# -Wshadow -Wold-style-cast -Wno-documentation
+# -Wextra -Wstrict-aliasing -Wunreachable-code -Wcast-qual -Wctor-dtor-privacy \
+#                 -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-include-dirs -Wswitch-default \
+#                  -Woverloaded-virtual -Wredundant-decls  -Wstrict-overflow=5 -Wswitch-default -Wundef \
+# -Wno-variadic-macros -Wno-parentheses -Wno-unused-function -Wno-unused  -fdiagnostics-show-option \
 set(BUILD_PLATFORM "x64")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(Boost_USE_STATIC_LIBS ON)
@@ -110,7 +109,7 @@ target_link_libraries(airsim_data_recv
     ${OpenCV_LIBS}
  )
 
- add_executable(airsim_control
+add_executable(airsim_control
  src/airsim_control.cpp
  ${SOURCEFILES}
 )
@@ -123,4 +122,17 @@ ${catkin_LIBRARIES}
  ${OpenCV_LIBS}
 )
 
+
+add_executable(airsim_test
+ src/airsim_test.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_test
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
 

@@ -49,24 +49,24 @@ MultirotorRpcLibServer::MultirotorRpcLibServer(MultirotorApi* drone, string serv
     (static_cast<rpc::server*>(getServer()))->
         bind("hover", [&]() -> bool { return getDroneApi()->hover(); });
 
-    (static_cast<rpc::server*>(getServer()))->
-        bind("getGpsLocation", [&]() -> MultirotorRpcLibAdapators::GeoPoint { 
-        return MultirotorRpcLibAdapators::GeoPoint(getDroneApi()->getGpsLocation()); 
-    });
+	(static_cast<rpc::server*>(getServer()))->
+		bind("getGpsLocation", [&]() -> MultirotorRpcLibAdapators::GpsData {
+		return MultirotorRpcLibAdapators::GpsData(getDroneApi()->getGpsLocation());
+	});
 
 	(static_cast<rpc::server*>(getServer()))->
-		bind("getBarometerdata", [&](float period) -> MultirotorRpcLibAdapators::BarometerData {
-		return MultirotorRpcLibAdapators::BarometerData(getDroneApi()->getBarometerdata(period));
+		bind("getBarometerdata", [&]() -> MultirotorRpcLibAdapators::BarometerData {
+		return MultirotorRpcLibAdapators::BarometerData(getDroneApi()->getBarometerdata());
 	});
 	
 	(static_cast<rpc::server*>(getServer()))->
-		bind("getMagnetometerdata", [&](float period) -> MultirotorRpcLibAdapators::MagnetometerData {
-		return MultirotorRpcLibAdapators::MagnetometerData(getDroneApi()->getMagnetometerdata(period));
+		bind("getMagnetometerdata", [&]() -> MultirotorRpcLibAdapators::MagnetometerData {
+		return MultirotorRpcLibAdapators::MagnetometerData(getDroneApi()->getMagnetometerdata());
 	});
 	
 	(static_cast<rpc::server*>(getServer()))->
-		bind("getImudata", [&](float period) -> MultirotorRpcLibAdapators::ImuData {
-		return MultirotorRpcLibAdapators::ImuData(getDroneApi()->getImudata(period));
+		bind("getImudata", [&]() -> MultirotorRpcLibAdapators::ImuData {
+		return MultirotorRpcLibAdapators::ImuData(getDroneApi()->getImudata());
 	});
 
 }

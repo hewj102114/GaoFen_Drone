@@ -34,13 +34,6 @@ AirsimNode::AirsimNode(ros::NodeHandle* _pnh, const std::string& _ip) {
 
 AirsimNode::~AirsimNode() {  delete control_client;}
 
-void AirsimNode::getAirsimData(msr::airlib::MultirotorRpcLibClient* client) {
-    getImuData(client);
-    getMagneticData(client);
-    getGPSData(client);
-    getBarometerData(client);
-}
-
 void AirsimNode::getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient* client) {
     using namespace msr::airlib;
     typedef ImageCaptureBase::ImageRequest ImageRequest;
@@ -155,7 +148,7 @@ void AirsimNode::getAllImageData(msr::airlib::MultirotorRpcLibClient* client){
 
 void AirsimNode::getImuData(msr::airlib::MultirotorRpcLibClient* client) {
     msr::airlib::ImuData airsim_img_data;
-    airsim_img_data = client->getImudata(1.0 / DATA_FREQ);
+    airsim_img_data = client->getImudata();
     imu_data.header.frame_id = "base_link";
     imu_data.header.stamp = ros::Time::now();
     imu_data.angular_velocity.x = airsim_img_data.angular_velocity(0);
@@ -169,7 +162,7 @@ void AirsimNode::getImuData(msr::airlib::MultirotorRpcLibClient* client) {
 
 void AirsimNode::getMagneticData(msr::airlib::MultirotorRpcLibClient* client) {
     msr::airlib::MagnetometerData airsim_magnetic_data;
-    airsim_magnetic_data = client->getMagnetometerdata(1.0 / DATA_FREQ);
+    airsim_magnetic_data = client->getMagnetometerdata();
     magnetic_data.header.frame_id = "base_link";
     magnetic_data.header.stamp = ros::Time::now();
     magnetic_data.magnetic_field.x =
@@ -181,7 +174,7 @@ void AirsimNode::getMagneticData(msr::airlib::MultirotorRpcLibClient* client) {
     pub_magnetic.publish(magnetic_data);
 }
 void AirsimNode::getGPSData(msr::airlib::MultirotorRpcLibClient* client) {
-    msr::airlib::GeoPoint airsim_aps_data;
+    msr::airlib::GpsData airsim_aps_data;
     airsim_aps_data = client->getGpsLocation();
     gps_data.header.frame_id = "base_link";
     gps_data.header.stamp = ros::Time::now();
@@ -192,7 +185,7 @@ void AirsimNode::getGPSData(msr::airlib::MultirotorRpcLibClient* client) {
 }
 void AirsimNode::getBarometerData(msr::airlib::MultirotorRpcLibClient* client) {
     msr::airlib::BarometerData airsim_barometer_data;
-    airsim_barometer_data = client->getBarometerdata(1.0 / DATA_FREQ);
+    airsim_barometer_data = client->getBarometerdata();
     barometer_data.header.frame_id = "base_link";
     barometer_data.header.stamp = ros::Time::now();
     barometer_data.vector.x = airsim_barometer_data.altitude;  // altitude meter
@@ -202,89 +195,85 @@ void AirsimNode::getBarometerData(msr::airlib::MultirotorRpcLibClient* client) {
 }
 
 bool AirsimNode::takeoff() {
-    cout<<"AAAA   "<<control_client->isApiControlEnabled()<<endl;
     control_client->enableApiControl(true);
-        cout<<"AAAA   "<<control_client->isApiControlEnabled()<<endl;
     control_client->armDisarm(true);
-    // std::cout << "Press Enter to takeoff" << std::endl; std::cin.get();
     float takeoffTimeout = 2;
     control_client->takeoff(takeoffTimeout);
+    ROS_INFO("Command : Take Off");
 }
 bool AirsimNode::land() {
-    float takeoffTimeout = 5;
+    float takeoffTimeout =20;
     control_client->land(takeoffTimeout);
     control_client->armDisarm(false);
+    ROS_INFO("Command : Land");
 }
 bool AirsimNode::move(float pitch, float roll, float throttle, float yaw,
                       float duration) {
-    ;
+    control_client->moveByAngleThrottle(pitch, roll, throttle, yaw,duration);
+    ROS_INFO("Command : Move Pitch-%f Roll-%f Throtele-%f Yaw-%f Dur%f",pitch, roll, throttle, yaw,duration);
 }
 bool AirsimNode::hover() { ; }
 
-void AirsimNode::connect() {
-    control_client->confirmConnection();
-}
 
-
-void AirsimNode::flightDataThread(){
+void AirsimNode::createThread(int n){
     msr::airlib::MultirotorRpcLibClient* client = new msr::airlib::MultirotorRpcLibClient(ip_adress);
     client->confirmConnection();
-    ros::Rate rate(80);
+    string thread_name;
+    int first_flag=1;
     while(RUNNING_FLAG){
-        getAirsimData(client);
-        ros::spinOnce();
-        rate.sleep();
-    }
-    ROS_INFO("Get flightData Thread Exit");
-}
+        switch(n){
+            case 0:
+                getImuData(client);
+                thread_name="getImuData";
+                
+                break;
+            case 1:
+                getMagneticData(client);
+                thread_name="getMagneticData";
 
-void AirsimNode::imageFrontRgbThread(){
-    msr::airlib::MultirotorRpcLibClient* client = new msr::airlib::MultirotorRpcLibClient(ip_adress);
-    client->confirmConnection();
-    ros::Rate rate(20);
-    while(RUNNING_FLAG){
-        getImageFrontRgbData(client);
-        ros::spinOnce();
-        rate.sleep();
-    }
-        ROS_INFO("Get imageFrontRgb Thread Exit");
-}
+                break;
+            case 2:
+                getGPSData(client);
+                thread_name="getGPSData";
 
-void AirsimNode::imageFrontDepthThread(){
-    msr::airlib::MultirotorRpcLibClient* client = new msr::airlib::MultirotorRpcLibClient(ip_adress);
-    client->confirmConnection();
-    ros::Rate rate(20);
-    while(RUNNING_FLAG){
-        getImageFrontDepthData(client);
-        ros::spinOnce();
-        rate.sleep();
-    }
-     ROS_INFO("Get imageFrontDepth Thread Exit");
-}
+                break;
+            case 3:
+                getBarometerData(client);
+                thread_name="getBarometerData";
 
-void AirsimNode::imageDownRgbThread(){
-    msr::airlib::MultirotorRpcLibClient* client = new msr::airlib::MultirotorRpcLibClient(ip_adress);
-    client->confirmConnection();
-    ros::Rate rate(20);
-    while(RUNNING_FLAG){
-        getImageDownRgbData(client);
-        ros::spinOnce();
-        rate.sleep();
-    }
-     ROS_INFO("Get imageDownRgb Thread Exit");
-}
+                break;
+            case 4:
+                getImageDownRgbData(client);
+                thread_name="getImageDownRgbData";
 
+                break;
+            case 5:
+                getImageFrontRgbData(client);
+                thread_name="getImageFrontRgbData";
+
+                break;
+            case 6:
+                getImageFrontDepthData(client);
+                thread_name="getImageFrontDepthData";
+
+                break;
+        }
+        if (first_flag==1){
+            ROS_INFO("Thread Create : %s",thread_name.c_str());
+            first_flag=0;   
+        }
+        ros::spinOnce();
+    }
+     ROS_INFO("Thread Exit : %s",thread_name.c_str());
+
+}
 void AirsimNode::run(){
     RUNNING_FLAG=1;
-    std::thread t1(&AirsimNode::imageDownRgbThread,this);
-    std::thread t2(&AirsimNode::imageFrontRgbThread,this);
-    std::thread t3(&AirsimNode::imageFrontDepthThread,this);
-    std::thread t4(&AirsimNode::flightDataThread,this);
-    
-    t1.join();
-    t2.join();
-    t3.join();
-    t4.join();
-    ROS_INFO("Airsim Run Exit");
+    std::thread t[7];
+    for(int i=0;i<7;i++)
+        t[i]=thread(&AirsimNode::createThread,this,i);
+    std::for_each(t,t+7,[](thread& t){t.join();});
+
+    ROS_INFO("Exit : Airsim Run Function");
 }
 

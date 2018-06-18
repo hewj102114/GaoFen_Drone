@@ -16,17 +16,17 @@ namespace msr { namespace airlib {
 
 class MultirotorRpcLibClient : public RpcLibClientBase {
 public:
-    MultirotorRpcLibClient(const string& ip_address = "localhost", uint16_t port = 41451, uint timeout_ms = 60000);
+    MultirotorRpcLibClient(const string& ip_address = "127.0.0.1", uint16_t port = 41451, uint timeout_ms = 60000);
 
     bool armDisarm(bool arm);
     bool takeoff(float max_wait_ms = 15);
     bool land(float max_wait_seconds = 60);
     bool hover();
     bool moveByAngleThrottle(float pitch, float roll, float throttle, float yaw_rate, float duration);
-    GeoPoint getGpsLocation();
-	BarometerData getBarometerdata(float period);
-	MagnetometerData getMagnetometerdata(float period);
-	ImuData getImudata(float period);
+	GpsData getGpsLocation();
+	BarometerData getBarometerdata();
+	MagnetometerData getMagnetometerdata();
+	ImuData getImudata();
 
 
     /*

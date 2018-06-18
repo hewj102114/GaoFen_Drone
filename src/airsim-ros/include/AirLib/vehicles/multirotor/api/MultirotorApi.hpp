@@ -209,25 +209,34 @@ public:
 
 
     //TODO: add GPS health, accuracy in API
-    GeoPoint getGpsLocation()
+	GpsData getGpsLocation()
     {
-        return controller_->getGpsLocation();
+		GpsData  output;
+		GeoPoint result;
+		result =  controller_->getGpsLocation();
+		return output;
     }
 
 	
-	BarometerData getBarometerdata(float period)
+	BarometerData getBarometerdata()
 	{
-		return sensor_->generateBarometerStaticData( period);
+		BarometerData output;
+		return output;
+		//return sensor_->generateBarometerStaticData();
 	}
 
-	MagnetometerData getMagnetometerdata(float period)
+	MagnetometerData getMagnetometerdata( )
 	{
-		return sensor_->generateMagnetometer2D(period);
+		MagnetometerData output;
+		return output;
+		//return sensor_->generateMagnetometer2D();
 	}
 
-	ImuData getImudata(float period)
+	ImuData getImudata()
 	{
-		return sensor_->generateImuStaticData(period);
+		ImuData output;
+		return output;
+		//return sensor_->generateImuStaticData();
 	}
 	
 

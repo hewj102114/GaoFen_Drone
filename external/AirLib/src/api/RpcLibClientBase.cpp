@@ -80,15 +80,6 @@ vector<ImageCaptureBase::ImageResponse> RpcLibClientBase::simGetImages(vector<Im
 
     return RpcLibAdapatorsBase::ImageResponse::to(response_adaptor);
 }
-vector<uint8_t> RpcLibClientBase::simGetImage(int camera_id, ImageCaptureBase::ImageType type)
-{
-    vector<uint8_t> result = pimpl_->client.call("simGetImage", camera_id, type).as<vector<uint8_t>>();
-    if (result.size() == 1) {
-        // rpclib has a bug with serializing empty vectors, so we return a 1 byte vector instead.
-        result.clear();
-    }
-    return result;
-}
 void RpcLibClientBase::reset()
 {
     pimpl_->client.call("reset");
@@ -117,6 +108,15 @@ void* RpcLibClientBase::getClient()
 }
 
 /*
+vector<uint8_t> RpcLibClientBase::simGetImage(int camera_id, ImageCaptureBase::ImageType type)
+{
+vector<uint8_t> result = pimpl_->client.call("simGetImage", camera_id, type).as<vector<uint8_t>>();
+if (result.size() == 1) {
+// rpclib has a bug with serializing empty vectors, so we return a 1 byte vector instead.
+result.clear();
+}
+return result;
+}
 bool RpcLibClientBase::ping()
 {
     return pimpl_->client.call("ping").as<bool>();

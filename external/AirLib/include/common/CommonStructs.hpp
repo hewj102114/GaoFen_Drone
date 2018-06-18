@@ -148,18 +148,19 @@ struct Odometry {
 struct BarometerData {
 	float altitude;    //meters
 	float pressure;    //Pascal
+	msr::airlib::TTimePoint time_stamp;
 
 	BarometerData()
 	{}
 
-	BarometerData(float altitude_val, float pressure_val)
+	BarometerData(float altitude_val, float pressure_val, msr::airlib::TTimePoint time_stamp_val)
 	{
-		set(altitude_val, pressure_val);
+		set(altitude_val, pressure_val, time_stamp_val);
 	}
 
-	void set(float altitude_val, float pressure_val)
+	void set(float altitude_val, float pressure_val, msr::airlib::TTimePoint time_stamp_val)
 	{
-		altitude = altitude_val, pressure = pressure_val;
+		altitude = altitude_val, pressure = pressure_val; time_stamp = time_stamp_val;
 	}
 
 	friend std::ostream& operator<<(std::ostream &os, BarometerData const &g) {
@@ -175,35 +176,89 @@ struct BarometerData {
 struct ImuData {
 	Vector3r angular_velocity;
 	Vector3r linear_acceleration;
+	msr::airlib::TTimePoint time_stamp;
 
 	ImuData()
 	{}
 
-	ImuData(Vector3r angular_velocity_val, Vector3r linear_acceleration_val)
+	ImuData(Vector3r angular_velocity_val, Vector3r linear_acceleration_val, msr::airlib::TTimePoint time_stamp_val)
 	{
-		set(angular_velocity_val, linear_acceleration_val);
+		set(angular_velocity_val, linear_acceleration_val, time_stamp_val);
 	}
 
-	void set(Vector3r angular_velocity_val, Vector3r linear_acceleration_val)
+	void set(Vector3r angular_velocity_val, Vector3r linear_acceleration_val, msr::airlib::TTimePoint time_stamp_val)
 	{
-		angular_velocity = angular_velocity_val;  linear_acceleration = linear_acceleration_val;
+		angular_velocity = angular_velocity_val;  linear_acceleration = linear_acceleration_val;  time_stamp = time_stamp_val;
 	}
 
+	/*
+	friend std::ostream& operator<<(std::ostream &os, ImuData const &g) {
+	//return os << "[" << g.angular_velocity.x << ", " << g.angular_velocity.y << ", " << g.angular_velocity.z << g.linear_acceleration.x << ", " << g.linear_acceleration.y << ", " << g.linear_acceleration.z << "]";
+	return  os << "[" << g.angular_velocity.data << ", " << g.linear_acceleration.data << "]";
+	}
 
+	std::string to_string()
+	{
+	//return std::to_string(angular_velocity.x) + string(", ") + std::to_string(angular_velocity.y) + string(", ") + std::to_string(angular_velocity.z) + std::to_string(linear_acceleration.x) + string(", ") + std::to_string(linear_acceleration.y) + string(", ") + std::to_string(linear_acceleration.z);
+	return std::to_string(angular_velocity.data) + string(", ") + std::to_string(linear_acceleration.data);
+	}
+	*/
 };
 
 struct MagnetometerData {
 	Vector3r magnetic_field_body; //in Gauss
+	msr::airlib::TTimePoint time_stamp;
 
 	MagnetometerData()
 	{}
-	MagnetometerData(Vector3r magnetic_field_body_val)
+	MagnetometerData(Vector3r magnetic_field_body_val, msr::airlib::TTimePoint time_stamp_val)
 	{
-		set(magnetic_field_body_val);
+		set(magnetic_field_body_val, time_stamp_val);
 	}
-	void set(Vector3r magnetic_field_body_val)
+	void set(Vector3r magnetic_field_body_val, msr::airlib::TTimePoint time_stamp_val)
 	{
-		magnetic_field_body = magnetic_field_body_val;
+		magnetic_field_body = magnetic_field_body_val; time_stamp = time_stamp_val;
+	}
+	/*
+	friend std::ostream& operator<<(std::ostream &os, MagnetometerData const &g) {
+	return os << "[" << g.magnetic_field_body.data << "]";
+	}
+
+	std::string to_string()
+	{
+	//return std::to_string(magnetic_field_body.data) + string(", ") + std::to_string(magnetic_field_body(2)) + string(", ") + std::to_string(magnetic_field_body(3));
+	return std::to_string(magnetic_field_body.data);
+	}
+	*/
+
+};
+
+struct GpsData {
+	double latitude = 0, longitude = 0;
+	float altitude = 0;
+	msr::airlib::TTimePoint time_stamp;
+
+
+	GpsData()
+	{}
+
+	GpsData(double latitude_val, double longitude_val, float altitude_val, msr::airlib::TTimePoint time_stamp_val)
+	{
+		set(latitude_val, longitude_val, altitude_val, time_stamp_val);
+	}
+
+	void set(double latitude_val, double longitude_val, float altitude_val, msr::airlib::TTimePoint time_stamp_val)
+	{
+		latitude = latitude_val, longitude = longitude_val; altitude = altitude_val; time_stamp = time_stamp_val;
+	}
+
+	friend std::ostream& operator<<(std::ostream &os, GpsData const &g) {
+		return os << "[" << g.latitude << ", " << g.longitude << ", " << g.altitude << "]";
+	}
+
+	std::string to_string()
+	{
+		return std::to_string(latitude) + string(", ") + std::to_string(longitude) + string(", ") + std::to_string(altitude);
 	}
 };
 

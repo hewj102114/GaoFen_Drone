@@ -58,14 +58,6 @@ RpcLibServerBase::RpcLibServerBase(VehicleApiBase* vehicle, string server_addres
         const auto& response = vehicle_->simGetImages(RpcLibAdapatorsBase::ImageRequest::to(request_adapter));
         return RpcLibAdapatorsBase::ImageResponse::from(response);
     });
-    pimpl_->server.bind("simGetImage", [&](uint8_t camera_id, ImageCaptureBase::ImageType type) -> vector<uint8_t> {
-        auto result = vehicle_->simGetImage(camera_id, type);
-        if (result.size() == 0) {
-            // rpclib has a bug with serializing empty vectors, so we return a 1 byte vector instead.
-            result.push_back(0);
-        }
-        return result;
-    });
     pimpl_->server.bind("reset", [&]() -> void {
         vehicle_->reset();
     });
@@ -74,6 +66,14 @@ RpcLibServerBase::RpcLibServerBase(VehicleApiBase* vehicle, string server_addres
     pimpl_->server.suppress_exceptions(true);
     
     /*
+	pimpl_->server.bind("simGetImage", [&](uint8_t camera_id, ImageCaptureBase::ImageType type) -> vector<uint8_t> {
+	auto result = vehicle_->simGetImage(camera_id, type);
+	if (result.size() == 0) {
+	// rpclib has a bug with serializing empty vectors, so we return a 1 byte vector instead.
+	result.push_back(0);
+	}
+	return result;
+	});
     pimpl_->server.
         bind("simSetPose", [&](const RpcLibAdapatorsBase::Pose &pose, bool ignore_collision) -> void {
         vehicle_->simSetPose(pose.to(), ignore_collision);

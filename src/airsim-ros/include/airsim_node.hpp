@@ -35,7 +35,6 @@ class AirsimNode{
     msr::airlib::MultirotorRpcLibClient* control_client;
     bool RUNNING_FLAG,EXIT_FLAG;
 
-    void getAirsimData(msr::airlib::MultirotorRpcLibClient* client);
     void getImuData(msr::airlib::MultirotorRpcLibClient* client);
     void getMagneticData(msr::airlib::MultirotorRpcLibClient* client);
     void getGPSData(msr::airlib::MultirotorRpcLibClient* client);
@@ -45,16 +44,12 @@ class AirsimNode{
     void getImageDownRgbData(msr::airlib::MultirotorRpcLibClient* client);
     void getAllImageData(msr::airlib::MultirotorRpcLibClient* client);
 
-    void connect();
     bool takeoff();
     bool land();
     bool move(float pitch,float roll,float throttle,float yaw,float duration);
     bool hover();
 
     void run();
-    void flightDataThread();
-    void imageFrontRgbThread();
-    void imageFrontDepthThread();
-    void imageDownRgbThread();
+    void createThread(int n);
 
 };

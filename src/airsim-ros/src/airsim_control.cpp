@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     ros::Rate rate(80);
     airsim_node.takeoff();
     while (ros::ok()) {
-        ROS_INFO("LOOP");
+        airsim_node.move(0,0,0.5571,0,5);
         ros::spinOnce();
         rate.sleep();
     }

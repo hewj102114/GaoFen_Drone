@@ -60,24 +60,24 @@ bool MultirotorRpcLibClient::hover()
 {
     return static_cast<rpc::client*>(getClient())->call("hover").as<bool>();
 }
-GeoPoint MultirotorRpcLibClient::getGpsLocation()
+GpsData MultirotorRpcLibClient::getGpsLocation()
 {
-    return static_cast<rpc::client*>(getClient())->call("getGpsLocation").as<MultirotorRpcLibAdapators::GeoPoint>().to();
+	return static_cast<rpc::client*>(getClient())->call("getGpsLocation").as<MultirotorRpcLibAdapators::GpsData>().to();
 }
 
-BarometerData MultirotorRpcLibClient::getBarometerdata(float period)
+BarometerData MultirotorRpcLibClient::getBarometerdata()
 {
-	return static_cast<rpc::client*>(getClient())->call("getBarometerdata", period).as<MultirotorRpcLibAdapators::BarometerData>().to();
+	return static_cast<rpc::client*>(getClient())->call("getBarometerdata").as<MultirotorRpcLibAdapators::BarometerData>().to();
 }
 
-MagnetometerData MultirotorRpcLibClient::getMagnetometerdata(float period)
+MagnetometerData MultirotorRpcLibClient::getMagnetometerdata()
 {
-	return static_cast<rpc::client*>(getClient())->call("getMagnetometerdata", period).as<MultirotorRpcLibAdapators::MagnetometerData>().to();
+	return static_cast<rpc::client*>(getClient())->call("getMagnetometerdata").as<MultirotorRpcLibAdapators::MagnetometerData>().to();
 }
 
-ImuData  MultirotorRpcLibClient::getImudata(float period)
+ImuData  MultirotorRpcLibClient::getImudata()
 {
-	return static_cast<rpc::client*>(getClient())->call("getImudata", period).as<MultirotorRpcLibAdapators::ImuData>().to();
+	return static_cast<rpc::client*>(getClient())->call("getImudata").as<MultirotorRpcLibAdapators::ImuData>().to();
 }
 
 }} //namespace

@@ -126,8 +126,9 @@ public:
 	struct BarometerData {
 		float altitude = 0;    //meters
 		float pressure = 0;    //Pascal
+		msr::airlib::TTimePoint time_stamp;
 
-		MSGPACK_DEFINE_MAP(altitude, pressure);
+		MSGPACK_DEFINE_MAP(altitude, pressure, time_stamp);
 
 		BarometerData()
 		{}
@@ -136,18 +137,20 @@ public:
 		{
 			altitude = s.altitude;
 			pressure = s.pressure;
+			time_stamp = s.time_stamp;
 		}
 		msr::airlib::BarometerData to() const
 		{
-			return msr::airlib::BarometerData(altitude, pressure);
+			return msr::airlib::BarometerData(altitude, pressure, time_stamp);
 		}
 	};
 
 	struct ImuData {
 		Vector3r angular_velocity;
 		Vector3r linear_acceleration;
+		msr::airlib::TTimePoint time_stamp;
 
-		MSGPACK_DEFINE_MAP(angular_velocity, linear_acceleration);
+		MSGPACK_DEFINE_MAP(angular_velocity, linear_acceleration, time_stamp);
 
 		ImuData()
 		{}
@@ -156,30 +159,55 @@ public:
 		{
 			angular_velocity = s.angular_velocity;
 			linear_acceleration = s.linear_acceleration;
+			time_stamp = s.time_stamp;
 		}
 		msr::airlib::ImuData to() const
 		{
-			return msr::airlib::ImuData(angular_velocity.to(), linear_acceleration.to());
+			return msr::airlib::ImuData(angular_velocity.to(), linear_acceleration.to(), time_stamp);
 		}
 	};
 
 	struct MagnetometerData {
 		Vector3r magnetic_field_body; //in Gauss
+		msr::airlib::TTimePoint time_stamp;
 
-		MSGPACK_DEFINE_MAP(magnetic_field_body);
+		MSGPACK_DEFINE_MAP(magnetic_field_body, time_stamp);
 
 		MagnetometerData()
 		{}
 
 		MagnetometerData(const msr::airlib::MagnetometerData& s)
 		{
-			magnetic_field_body = s.magnetic_field_body;
+			magnetic_field_body = s.magnetic_field_body; time_stamp = s.time_stamp;
 		}
 		msr::airlib::MagnetometerData to() const
 		{
-			return msr::airlib::MagnetometerData(magnetic_field_body.to());
+			return msr::airlib::MagnetometerData(magnetic_field_body.to(), time_stamp);
 		}
 
+	};
+
+	struct GpsData {
+		double latitude = 0, longitude = 0;
+		float altitude = 0;
+		msr::airlib::TTimePoint time_stamp;
+
+		MSGPACK_DEFINE_MAP(latitude, longitude, altitude, time_stamp);
+
+		GpsData()
+		{}
+
+		GpsData(const msr::airlib::GpsData& s)
+		{
+			latitude = s.latitude;
+			longitude = s.longitude;
+			altitude = s.altitude;
+			time_stamp = s.time_stamp;
+		}
+		msr::airlib::GpsData to() const
+		{
+			return msr::airlib::GpsData(latitude, longitude, altitude, time_stamp);
+		}
 	};
 
     struct GeoPoint {
