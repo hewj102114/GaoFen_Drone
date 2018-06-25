@@ -18,9 +18,9 @@ AirsimNode::AirsimNode(ros::NodeHandle* _pnh, const std::string& _ip) {
     pub_barometer =
         pnh->advertise<geometry_msgs::Vector3Stamped>("airsim/barometer", 1);
 
+
     image_transport::ImageTransport it(*pnh);
-    pub_image_front_rgb = it.advertise("airsim/image/front/rgb", 1);
-    ;
+    pub_image_front_rgb = it.advertiseCamera("airsim/image/front/rgb", 1);
     pub_image_front_depth = it.advertise("airsim/image/front/depth", 1);
     pub_image_down_rgb = it.advertise("airsim/image/down/rgb", 1);
 
@@ -29,7 +29,6 @@ AirsimNode::AirsimNode(ros::NodeHandle* _pnh, const std::string& _ip) {
     control_client->confirmConnection();
 
     RUNNING_FLAG=0;
-    EXIT_FLAG=0;
 }
 
 AirsimNode::~AirsimNode() {  delete control_client;}
@@ -54,7 +53,17 @@ void AirsimNode::getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient* clien
     msg_front_rgb.header.frame_id = "image";
     msg_front_rgb.image = img_front_rgb;
     msg_front_rgb.encoding = sensor_msgs::image_encodings::BGR8;
-    pub_image_front_rgb.publish(msg_front_rgb.toImageMsg());
+
+    sensor_msgs::CameraInfoPtr cam_info(new sensor_msgs::CameraInfo());
+    cam_info->header=msg_front_rgb.header;
+    cam_info->height=response[0].height;
+    cam_info->width=response[0].width;
+    cam_info->K[0]=320;
+    cam_info->K[2]=320;
+    cam_info->K[4]=320;
+    cam_info->K[5]=240;
+    cam_info->K[8]=1;
+    pub_image_front_rgb.publish(msg_front_rgb.toImageMsg(),cam_info);
 
 
 }
@@ -127,7 +136,18 @@ void AirsimNode::getAllImageData(msr::airlib::MultirotorRpcLibClient* client){
     msg_front_rgb.header.frame_id = "image";
     msg_front_rgb.image = img_front_rgb;
     msg_front_rgb.encoding = sensor_msgs::image_encodings::BGR8;
-    pub_image_front_rgb.publish(msg_front_rgb.toImageMsg());
+    
+    sensor_msgs::CameraInfoPtr cam_info(new sensor_msgs::CameraInfo());
+    cam_info->header=msg_front_rgb.header;
+    cam_info->height=response[0].height;
+    cam_info->width=response[0].width;
+    cam_info->K[0]=320;
+    cam_info->K[2]=320;
+    cam_info->K[4]=320;
+    cam_info->K[5]=240;
+    cam_info->K[8]=1;
+
+    pub_image_front_rgb.publish(msg_front_rgb.toImageMsg(),cam_info);
 
     cv_bridge::CvImage msg_down_rgb;
     msg_down_rgb.header.stamp = ros::Time::now();
@@ -195,20 +215,35 @@ void AirsimNode::getBarometerData(msr::airlib::MultirotorRpcLibClient* client) {
 }
 
 bool AirsimNode::takeoff() {
-    control_client->enableApiControl(true);
+        if(control_client->isApiControlEnabled()==0)
+    {
+        control_client->enableApiControl(true);
+        ROS_INFO("Command : Enable Api Control");
+    }
     control_client->armDisarm(true);
     float takeoffTimeout = 2;
     control_client->takeoff(takeoffTimeout);
     ROS_INFO("Command : Take Off");
 }
 bool AirsimNode::land() {
-    float takeoffTimeout =20;
+        if(control_client->isApiControlEnabled()==0)
+    {
+        control_client->enableApiControl(true);
+        ROS_INFO("Command : Enable Api Control");
+    }
+    float takeoffTimeout =100;
     control_client->land(takeoffTimeout);
+    sleep(3);
     control_client->armDisarm(false);
     ROS_INFO("Command : Land");
 }
 bool AirsimNode::move(float pitch, float roll, float throttle, float yaw,
                       float duration) {
+    if(control_client->isApiControlEnabled()==0)
+    {
+        control_client->enableApiControl(true);
+        ROS_INFO("Command : Enable Api Control");
+    }
     control_client->moveByAngleThrottle(pitch, roll, throttle, yaw,duration);
     ROS_INFO("Command : Move Pitch-%f Roll-%f Throtele-%f Yaw-%f Dur%f",pitch, roll, throttle, yaw,duration);
 }
@@ -261,10 +296,10 @@ void AirsimNode::createThread(int n){
         if (first_flag==1){
             ROS_INFO("Thread Create : %s",thread_name.c_str());
             first_flag=0;   
+            data_ready_flag[n]=1;
         }
         ros::spinOnce();
     }
-     ROS_INFO("Thread Exit : %s",thread_name.c_str());
 
 }
 void AirsimNode::run(){
@@ -272,8 +307,15 @@ void AirsimNode::run(){
     std::thread t[7];
     for(int i=0;i<7;i++)
         t[i]=thread(&AirsimNode::createThread,this,i);
-    std::for_each(t,t+7,[](thread& t){t.join();});
+    std::for_each(t,t+7,[](thread& t){t.detach();});
+    int sum=accumulate(data_ready_flag,data_ready_flag+7,7);
+        cout<<"ddddddddddddddDDDDDDDDDDDDDD   "<<sum<<endl;
+    while(sum<7){
+        sleep(1);
+        cout<<"wait"<<endl;
+    }
 
-    ROS_INFO("Exit : Airsim Run Function");
+
+    ROS_INFO("All Thread Create & Exit Airsim Run Function");
 }
 

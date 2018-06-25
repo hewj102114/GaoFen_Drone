@@ -3,6 +3,7 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
@@ -23,7 +24,8 @@ class AirsimNode{
     ros::Publisher pub_magnetic;
     ros::Publisher pub_gps;
     ros::Publisher pub_barometer;
-    image_transport::Publisher pub_image_front_rgb;
+
+    image_transport::CameraPublisher pub_image_front_rgb;
     image_transport::Publisher pub_image_front_depth;
     image_transport::Publisher pub_image_down_rgb;
 
@@ -33,7 +35,8 @@ class AirsimNode{
     geometry_msgs::Vector3Stamped barometer_data;
 
     msr::airlib::MultirotorRpcLibClient* control_client;
-    bool RUNNING_FLAG,EXIT_FLAG;
+    bool RUNNING_FLAG;
+    bool data_ready_flag[7];
 
     void getImuData(msr::airlib::MultirotorRpcLibClient* client);
     void getMagneticData(msr::airlib::MultirotorRpcLibClient* client);

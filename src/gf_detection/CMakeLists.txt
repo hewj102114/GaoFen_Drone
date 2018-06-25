@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(airsim-ros)
+project(gf_detection)
 
 find_package(Threads REQUIRED)
 set(CMAKE_BUILD_TYPE Release)
@@ -83,43 +83,23 @@ catkin_package(
 
 include_directories(
   include
-  include/AirLib
-  include/MavLinkCom
-  include/rpc
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
 )
-message("*****${CMAKE_CURRENT_SOURCE_DIR}/lib*********")
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 list(APPEND SOURCEFILES
-  src/airsim_node.cpp
+#   src/airsim_node.cpp
 )
 
-add_executable(airsim_node
-    src/main.cpp
-    ${SOURCEFILES}
+add_executable(front_cam_detection
+src/front_cam_detection.cpp
+src/num_detect.cpp
+    # ${SOURCEFILES}
 )
 
 
-target_link_libraries(airsim_node
-    AirLib
-    rpc
+target_link_libraries(front_cam_detection
    ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
  )
-
-
-add_executable(airsim_test
- src/airsim_test.cpp
- ${SOURCEFILES}
-)
-
-
-target_link_libraries(airsim_test
- AirLib
- rpc
-${catkin_LIBRARIES}
- ${OpenCV_LIBS}
-)
 
