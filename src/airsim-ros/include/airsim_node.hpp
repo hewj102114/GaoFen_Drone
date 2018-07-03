@@ -26,7 +26,7 @@ class AirsimNode{
     ros::Publisher pub_barometer;
 
     image_transport::CameraPublisher pub_image_front_rgb;
-    image_transport::Publisher pub_image_front_depth;
+    image_transport::CameraPublisher pub_image_front_depth;
     image_transport::Publisher pub_image_down_rgb;
 
     sensor_msgs::Imu imu_data;
@@ -36,7 +36,7 @@ class AirsimNode{
 
     msr::airlib::MultirotorRpcLibClient* control_client;
     bool RUNNING_FLAG;
-    bool data_ready_flag[7];
+    int data_ready_flag[7],exit_ready_flag[7];
 
     void getImuData(msr::airlib::MultirotorRpcLibClient* client);
     void getMagneticData(msr::airlib::MultirotorRpcLibClient* client);

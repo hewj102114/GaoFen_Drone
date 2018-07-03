@@ -70,7 +70,13 @@ int main(int argc, char** argv) {
         ros::spinOnce();
         rate.sleep();
     }
-    airsim_node.land();
+    // airsim_node.land();
     
+    int exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);
+    while(exit_flag_sum<7){
+        sleep(1);
+        ROS_INFO("Wait For Thread Exit");
+        exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);
+    }
     ROS_INFO("Exit : Airsim Node");
 }
