@@ -49,7 +49,9 @@ int main(int argc, char** argv) {
     ROS_INFO("Start Airsim Control");
     
     //************* 控制部分 *****************
-    airsim_node.takeoff();
+    //******  初始化
+
+    // airsim_node.takeoff();
     double target_height=10.0;
     double pre_throttle=0.5571;
     PIDctrl pid_height;
@@ -58,16 +60,23 @@ int main(int argc, char** argv) {
     ros::Rate rate(30);
     while (airsim_node.RUNNING_FLAG) {
         //pitch 负-前 roll 负-左 throttle 0.5571
-        double d_height=target_height-airsim_node.gps_data.altitude;
+        sleep(1);
+        // double d_height=target_height-airsim_node.gps_data.altitude;
 
-        double d_throttle= pid_height.calc(d_height);
-        ROS_INFO("H: %f  D: %f",d_height,d_throttle);
-        airsim_node.move(-0,0,pre_throttle + d_throttle,0,5);
-        pre_throttle=pre_throttle + d_throttle;
-        ros::spinOnce();
-        rate.sleep();
+        // double d_throttle= pid_height.calc(d_height);
+        // ROS_INFO("H: %f  D: %f",d_height,d_throttle);
+        // airsim_node.move(-0,0,pre_throttle + d_throttle,0,5);
+        // pre_throttle=pre_throttle + d_throttle;
+        // ros::spinOnce();
+        // rate.sleep();
     }
-    airsim_node.land();
+    // airsim_node.land();
     
+    int exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);
+    while(exit_flag_sum<7){
+        sleep(1);
+        ROS_INFO("Wait For Thread Exit");
+        exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);
+    }
     ROS_INFO("Exit : Airsim Node");
 }

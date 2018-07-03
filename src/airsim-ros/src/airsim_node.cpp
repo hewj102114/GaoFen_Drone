@@ -21,7 +21,7 @@ AirsimNode::AirsimNode(ros::NodeHandle* _pnh, const std::string& _ip) {
 
     image_transport::ImageTransport it(*pnh);
     pub_image_front_rgb = it.advertiseCamera("airsim/image/front/rgb", 1);
-    pub_image_front_depth = it.advertise("airsim/image/front/depth", 1);
+    pub_image_front_depth = it.advertiseCamera("airsim/image/front/depth", 1);
     pub_image_down_rgb = it.advertise("airsim/image/down/rgb", 1);
 
     ip_adress=_ip;
@@ -29,6 +29,9 @@ AirsimNode::AirsimNode(ros::NodeHandle* _pnh, const std::string& _ip) {
     control_client->confirmConnection();
 
     RUNNING_FLAG=0;
+    memset(data_ready_flag,0,7*sizeof(int));
+    memset(exit_ready_flag,0,7*sizeof(int));
+    
 }
 
 AirsimNode::~AirsimNode() {  delete control_client;}
@@ -87,7 +90,19 @@ void AirsimNode::getImageFrontDepthData(msr::airlib::MultirotorRpcLibClient* cli
     msg_front_depth.header.frame_id = "image";
     msg_front_depth.image = img_front_depth;
     msg_front_depth.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
-    pub_image_front_depth.publish(msg_front_depth.toImageMsg());
+
+    sensor_msgs::CameraInfoPtr cam_info(new sensor_msgs::CameraInfo());
+    cam_info->header=msg_front_depth.header;
+    cam_info->height=response[0].height;
+    cam_info->width=response[0].width;
+    cam_info->K[0]=320;
+    cam_info->K[2]=320;
+    cam_info->K[4]=320;
+    cam_info->K[5]=240;
+    cam_info->K[8]=1;
+    cam_info->roi.height=response[0].height;
+    cam_info->roi.width=response[0].width;
+    pub_image_front_depth.publish(msg_front_depth.toImageMsg(),cam_info);
 }
 
 void AirsimNode::getImageDownRgbData(msr::airlib::MultirotorRpcLibClient* client){
@@ -146,6 +161,8 @@ void AirsimNode::getAllImageData(msr::airlib::MultirotorRpcLibClient* client){
     cam_info->K[4]=320;
     cam_info->K[5]=240;
     cam_info->K[8]=1;
+    cam_info->roi.height=response[0].height;
+    cam_info->roi.width=response[0].width;
 
     pub_image_front_rgb.publish(msg_front_rgb.toImageMsg(),cam_info);
 
@@ -161,7 +178,7 @@ void AirsimNode::getAllImageData(msr::airlib::MultirotorRpcLibClient* client){
     msg_front_depth.header.frame_id = "image";
     msg_front_depth.image = img_front_depth;
     msg_front_depth.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
-    pub_image_front_depth.publish(msg_front_depth.toImageMsg());
+    pub_image_front_depth.publish(msg_front_depth.toImageMsg(),cam_info);
 
     
 }
@@ -256,6 +273,7 @@ void AirsimNode::createThread(int n){
     string thread_name;
     int first_flag=1;
     while(RUNNING_FLAG){
+        ros::Time sstart;
         switch(n){
             case 0:
                 getImuData(client);
@@ -283,12 +301,13 @@ void AirsimNode::createThread(int n){
 
                 break;
             case 5:
+                sstart=ros::Time::now();
                 getImageFrontRgbData(client);
+                ROS_INFO("TTTTT:%f",(ros::Time::now()-sstart).toSec());
                 thread_name="getImageFrontRgbData";
-
                 break;
             case 6:
-                getImageFrontDepthData(client);
+               getImageFrontDepthData(client);
                 thread_name="getImageFrontDepthData";
 
                 break;
@@ -300,7 +319,7 @@ void AirsimNode::createThread(int n){
         }
         ros::spinOnce();
     }
-
+    exit_ready_flag[n]=1;
 }
 void AirsimNode::run(){
     RUNNING_FLAG=1;
@@ -308,13 +327,12 @@ void AirsimNode::run(){
     for(int i=0;i<7;i++)
         t[i]=thread(&AirsimNode::createThread,this,i);
     std::for_each(t,t+7,[](thread& t){t.detach();});
-    int sum=accumulate(data_ready_flag,data_ready_flag+7,7);
-        cout<<"ddddddddddddddDDDDDDDDDDDDDD   "<<sum<<endl;
+    int sum=accumulate(data_ready_flag,data_ready_flag+7,(int)0);
+
     while(sum<7){
         sleep(1);
-        cout<<"wait"<<endl;
+        sum=accumulate(data_ready_flag,data_ready_flag+7,(int)0);
     }
-
 
     ROS_INFO("All Thread Create & Exit Airsim Run Function");
 }
