@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     numb.data[3]=127;
     cout<<"dddd  "<<numb.num<<endl;
 
-    string ip("192.168.1.20");
+    string ip("192.168.1.100");
     ROS_INFO("Connetct IP: %s",ip.c_str());
     AirsimNode airsim_node(&nh, ip);
     ptr_airsim=&airsim_node;
@@ -50,20 +50,23 @@ int main(int argc, char** argv) {
     
     //************* 控制部分 *****************
     airsim_node.takeoff();
-    double target_height=10.0;
-    double pre_throttle=0.5571;
+
+    double target_height = 25.0;
+    double d_throttle;
+
     PIDctrl pid_height;
-    pid_height.init(0.00006,0,0.05,0.1);
+    pid_height.init(0.1 , 0.0003 , 1.5 , 5);
 
     ros::Rate rate(30);
-    while (airsim_node.RUNNING_FLAG) {
-        //pitch 负-前 roll 负-左 throttle 0.5571
-        double d_height=target_height-airsim_node.gps_data.altitude;
+    while (airsim_node.RUNNING_FLAG) 
+    {
+        //pitch 负-前 roll 负-左  
+        double d_height = target_height - airsim_node.barometer_data.vector.x;
+        d_throttle = pid_height.calc(d_height);
 
-        double d_throttle= pid_height.calc(d_height);
-        ROS_INFO("H: %f  D: %f",d_height,d_throttle);
-        airsim_node.move(-0,0,pre_throttle + d_throttle,0,5);
-        pre_throttle=pre_throttle + d_throttle;
+        ROS_INFO("H: %f  D: %f" , d_height , d_throttle);   
+        //airsim_node.move(-0.03 , 0 , d_throttle  , 0 , 5);  
+ 
         ros::spinOnce();
         rate.sleep();
     }

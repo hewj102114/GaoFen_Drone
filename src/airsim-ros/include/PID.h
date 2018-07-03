@@ -26,7 +26,6 @@ class PIDctrl
 
 void PIDctrl::init(double _Kp, double _Ki, double _Kd, double _max)
 {
-
     Kp=_Kp;
     Ki=_Ki;
     Kd=_Kd;
@@ -42,28 +41,23 @@ void PIDctrl::reset()
 	dErr=0.0;
 }
 
-
+ 
 
 double PIDctrl::calc(double &curErr)
 {
-	sumErr+=curErr;
-	dErr=curErr-preErr;
-	preErr=curErr;
-	double Kisum=Ki*sumErr;
-	if (Kisum>0.8)
-	    Kisum=0.8;
-	if (Kisum<-0.8)
-	    Kisum=-0.8;
+	sumErr += curErr;
+	double Kisum = Ki*sumErr;
+	if (Kisum > 1)
+		Kisum = 1;
+	if (Kisum < -1)
+		Kisum = -1;
 
-	output=Kp*curErr+Kisum+Kd*dErr;
-	if (output>outMax)
-	{
-		output=outMax;
-	}
-    if (output<-outMax)
-	{
-		output=-outMax;
-	}
+	dErr    = curErr - preErr;
+	preErr = curErr;
+
+	output = Kp*curErr + Kisum + Kd*dErr;
+
+	double d_throttle = output;
 	
 	return output;
 }
