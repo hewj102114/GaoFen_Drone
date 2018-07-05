@@ -15,7 +15,7 @@ void sig(int isg_no){
     {
         ROS_ERROR("Get Exit Signal Error");
     }
-    else{
+    else{ 
         ptr_airsim->RUNNING_FLAG=0;
         ROS_INFO("Command : Get Exit Signal");
     }
@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     ROS_INFO("Start Airsim Control");
     
     //************* 控制部分 *****************
-    airsim_node.takeoff();
+    //airsim_node.takeoff();
 
     double target_height = 25.0;
     double d_throttle;
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     // airsim_node.land();
     
     int exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);
-    while(exit_flag_sum<7){
+    while(exit_flag_sum<5){
         sleep(1);
         ROS_INFO("Wait For Thread Exit");
         exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);

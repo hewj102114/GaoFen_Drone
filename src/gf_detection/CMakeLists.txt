@@ -27,6 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   cv_bridge
   image_transport
+pcl_ros
 #   message_generation
 )
 
@@ -78,11 +79,13 @@ catkin_package(
     std_msgs
     cv_bridge
     image_transport
+pcl_ros
     # message_runtime
 )
 
 include_directories(
   include
+  /home/pengrui/Documents/GaoFen_Drone/src/airsim-ros/include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
 )
@@ -99,6 +102,19 @@ src/num_detect.cpp
 
 
 target_link_libraries(front_cam_detection
+   ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+ )
+
+
+add_executable(record
+src/record.cpp
+src/num_detect.cpp
+    # ${SOURCEFILES}
+)
+
+
+target_link_libraries(record
    ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
  )

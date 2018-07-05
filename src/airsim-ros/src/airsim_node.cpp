@@ -34,10 +34,11 @@ AirsimNode::AirsimNode(ros::NodeHandle* _pnh, const std::string& _ip) {
     RUNNING_FLAG=0;
     memset(data_ready_flag,0,7*sizeof(int));
     memset(exit_ready_flag,0,7*sizeof(int));
-    
+    FN=0;
 }
 
 AirsimNode::~AirsimNode() {  delete control_client;}
+
 
 void AirsimNode::getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient* client) {
     using namespace msr::airlib;
@@ -55,7 +56,7 @@ void AirsimNode::getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient* clien
 
     CALC_TIME_END;
     cv::Mat img_front_rgb=cv::imdecode(response[0].image_data_uint8, cv::IMREAD_COLOR);
-
+    
 
     cv_bridge::CvImage msg_front_rgb;
     msg_front_rgb.header.stamp = ros::Time::now();
@@ -90,7 +91,8 @@ void AirsimNode::getImageFrontDepthData(msr::airlib::MultirotorRpcLibClient* cli
     std::vector<ImageResponse> response = client->simGetImages(request);
 
     cv::Mat img_front_depth(response[0].height,response[0].width,CV_32FC1,response[0].image_data_float.data());
-
+    if (img_front_depth.empty())
+        return;
     cv_bridge::CvImage msg_front_depth;
     msg_front_depth.header.stamp = ros::Time::now();
     msg_front_depth.header.frame_id = "image";
@@ -109,6 +111,7 @@ void AirsimNode::getImageFrontDepthData(msr::airlib::MultirotorRpcLibClient* cli
     cam_info->roi.height=response[0].height;
     cam_info->roi.width=response[0].width;
     pub_image_front_depth.publish(msg_front_depth.toImageMsg(),cam_info);
+
 }
 
 void AirsimNode::getImageDownRgbData(msr::airlib::MultirotorRpcLibClient* client){
@@ -310,7 +313,7 @@ void AirsimNode::createThread(int n){
             case 5:
                 getImageFrontRgbData(private_client);
                 thread_name="getImageFrontRgbData";
-                break;
+                break; 
             case 6:
                 getImageFrontDepthData(private_client);
                 thread_name="getImageFrontDepthData";
@@ -332,14 +335,15 @@ void AirsimNode::run(){
     int N=sizeof(thread_num)/sizeof(int);
     std::thread t[N];
 
-    ///////
     for(int i=0;i<N;i++)
         t[i]=thread(&AirsimNode::createThread,this,thread_num[i]);
+
     std::for_each(t,t+N,[](thread& t){t.detach();});
-    int sum=accumulate(data_ready_flag,data_ready_flag+N,N);
-        cout<<"ddddddddddddddDDDDDDDDDDDDDD   "<<sum<<endl;
-    while(sum<7){
+    int sum=accumulate(data_ready_flag,data_ready_flag+7,(int)0);
+    ROS_INFO("DDDDDDDDDDDD %d",sum);
+    while(sum<N){
         sleep(1);
+        ROS_INFO("DDDDDDDDDDDD %d",sum);
         sum=accumulate(data_ready_flag,data_ready_flag+7,(int)0);
     }
 

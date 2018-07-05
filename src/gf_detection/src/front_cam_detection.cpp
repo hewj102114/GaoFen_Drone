@@ -22,19 +22,21 @@ void cb_front_rgb(const sensor_msgs::ImageConstPtr& ptr_msg) {
     }
     img_rgb = cv_ptr->image.clone();
     // cur_seq = msg->header.seq;
+
 }
 
 void cb_front_depth(const sensor_msgs::ImageConstPtr& ptr_msg) {
     cv_bridge::CvImagePtr cv_ptr;
     try {
         cv_ptr = cv_bridge::toCvCopy(ptr_msg,
-                                     sensor_msgs::image_encodings::TYPE_32FC1);
+                                     sensor_msgs::image_encodings::TYPE_32FC1);//TYPE_32FC1
     } catch (cv_bridge::Exception& e) {
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
     }
     img_depth = cv_ptr->image.clone();
     // cur_seq = msg->header.seq;
+    
 }
 
 int main(int argc, char** argv) {
@@ -44,7 +46,7 @@ int main(int argc, char** argv) {
     image_transport::Subscriber sub_front_rgb =
         it.subscribe("airsim/image/front/rgb", 1, &cb_front_rgb);
     image_transport::Subscriber sub_front_depth =
-        it.subscribe("airsim/image/front/depth", 1, &cb_front_depth);
+        it.subscribe("airsim/image/front/depth", 1, &cb_front_depth); 
 
     ros::Rate rate(80);
     ros::Publisher cloud_pub =
@@ -52,18 +54,20 @@ int main(int argc, char** argv) {
 
     NumberDetect num_detect(&nh);
 
-    double camD[9] = {320,0,320,0,320,240,0,0,1};
-    double distCoeffD[5] = {0.0,0.0,0.0,0.0,0.0};
+    double camD[9] = {268.3556,0,320.6049,0,268.2210,240
+    4329,0,0,1};
+    double distCoeffD[5] = {0.0013,0.0,0.0,0.0,0.0};
     Mat camera_matrix = Mat(3, 3, CV_64FC1, camD);
     Mat distortion_coefficients = Mat(5, 1, CV_64FC1, distCoeffD);
     num_detect.setCamera(camera_matrix,distortion_coefficients);
-
+int FN=21;
     while (ros::ok()) {
         if (img_rgb.empty() || img_depth.empty()) {
             rate.sleep();
             ros::spinOnce();
             continue;
         }
+    
         ros::Time start = ros::Time::now();
         num_detect.detect(img_rgb, img_depth);
         ros::Time end = ros::Time::now();
@@ -80,10 +84,6 @@ int main(int argc, char** argv) {
 
         for (int i = 0; i < img_depth.rows; i++) {
             for (int j = 0; j < img_depth.cols; j++) {
-                // float depth = img_depth.at<float>(i, j);
-                // cloud.points[i*640+j].x = (j - 320) * depth * 1 / 320;
-                // cloud.points[i*640+j].y = (i - 240) * depth * 1 / 320;
-                // cloud.points[i*640+j].z = depth;
                 float u = j - 320;
                 float v = i - 240;
                 float d = img_depth.at<float>(i, j);
@@ -96,11 +96,7 @@ int main(int argc, char** argv) {
                     -1.0 * cloud.points[i * 640 + j].y * v / 320;
             }
         }
-        // for (unsigned int i = 0; i < img_depth.cols * img_depth.rows; ++i) {
-        //     cloud.points[i].x = 0.1 * i;
-        //     cloud.points[i].y = 0.1 * i;
-        //     cloud.points[i].z = 5;
-        // }
+
         cloud_pub.publish(cloud);
 
         imshow("a", img_rgb);

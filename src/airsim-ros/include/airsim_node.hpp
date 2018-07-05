@@ -54,5 +54,5 @@ class AirsimNode{
 
     void run();
     void createThread(int n);
-
+    int FN;
 };

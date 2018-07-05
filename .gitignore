@@ -1,6 +1,7 @@
 external/build/*
 external/cmake_build/*
 external/output/*
+resource/*
 .vscode/*
 build/*
 devel/*
