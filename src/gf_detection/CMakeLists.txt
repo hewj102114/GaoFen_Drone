@@ -28,7 +28,8 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
 pcl_ros
-#   message_generation
+   message_generation
+   gf_perception
 )
 
 
@@ -80,7 +81,8 @@ catkin_package(
     cv_bridge
     image_transport
 pcl_ros
-    # message_runtime
+     message_runtime
+     gf_perception
 )
 
 include_directories(
@@ -115,6 +117,20 @@ src/num_detect.cpp
 
 
 target_link_libraries(record
+   ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+ )
+
+
+
+add_executable(down
+src/image_down.cpp
+src/image_matching.cpp
+    # ${SOURCEFILES}
+)
+
+
+target_link_libraries(down
    ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
  )

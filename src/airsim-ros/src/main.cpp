@@ -1,5 +1,5 @@
 #include "airsim_node.hpp"
-#include "PID.h"
+// #include "PID.h"
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <vector>
@@ -47,33 +47,40 @@ int main(int argc, char** argv) {
     //************ 获取数据 *******************
     airsim_node.run();
     ROS_INFO("Start Airsim Control");
-    
+    int thread_size=accumulate(airsim_node.data_ready_flag,airsim_node.data_ready_flag+7,(int)0);
     //************* 控制部分 *****************
-    //airsim_node.takeoff();
+    airsim_node.takeoff();
 
     double target_height = 25.0;
     double d_throttle;
 
     PIDctrl pid_height;
-    pid_height.init(0.1 , 0.0003 , 1.5 , 5);
+    pid_height.init(0.08, 0.0003 , 1.5 , 5);
 
     ros::Rate rate(30);
+    int float_fly_cnt = 0;
     while (airsim_node.RUNNING_FLAG) 
     {
         //pitch 负-前 roll 负-左  
         double d_height = target_height - airsim_node.barometer_data.vector.x;
         d_throttle = pid_height.calc(d_height);
 
-        ROS_INFO("H: %f  D: %f" , d_height , d_throttle);   
-        //airsim_node.move(-0.03 , 0 , d_throttle  , 0 , 5);  
- 
+        //ROS_INFO("H: %f  D: %f" , d_height , d_throttle);   
+        //airsim_node.move(-0.0 , 0 , d_throttle  , 0.1 , 5);  
+
+        break;
+
         ros::spinOnce();
         rate.sleep();
     }
-    // airsim_node.land();
-    
+    airsim_node.land();
+    sleep(1);
+    airsim_node.takeoff();
+    sleep(1);
+    airsim_node.land();
+
     int exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);
-    while(exit_flag_sum<5){
+    while(exit_flag_sum<thread_size){
         sleep(1);
         ROS_INFO("Wait For Thread Exit");
         exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);

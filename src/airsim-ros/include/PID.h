@@ -19,33 +19,15 @@ class PIDctrl
 		
 		preErr=0.0;sumErr=0.0;
 	};
-	void init(double _Kp,double _Ki,double _Kd,double _max);
-	double calc(double &curErr);
-	void reset();
-};
-
-void PIDctrl::init(double _Kp, double _Ki, double _Kd, double _max)
-{
-    Kp=_Kp;
+	void init(double _Kp,double _Ki,double _Kd,double _max){
+		Kp=_Kp;
     Ki=_Ki;
     Kd=_Kd;
     outMax=_max;
     stop=false;
-}
-
-
-void PIDctrl::reset()
-{
-	preErr=0.0;
-	sumErr=0.0; 
-	dErr=0.0;
-}
-
- 
-
-double PIDctrl::calc(double &curErr)
-{
-	sumErr += curErr;
+	}
+	double calc(double &curErr){
+		sumErr += curErr;
 	double Kisum = Ki*sumErr;
 	if (Kisum > 1)
 		Kisum = 1;
@@ -60,4 +42,11 @@ double PIDctrl::calc(double &curErr)
 	double d_throttle = output;
 	
 	return output;
-}
+	}
+	void reset(){
+		preErr=0.0;
+	sumErr=0.0; 
+	dErr=0.0;
+	}
+};
+

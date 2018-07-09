@@ -27,7 +27,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   cv_bridge
   image_transport
-#   message_generation
+  message_generation
+  gf_perception
 )
 
 
@@ -78,7 +79,8 @@ catkin_package(
     std_msgs
     cv_bridge
     image_transport
-    # message_runtime
+    message_runtime
+    gf_perception
 )
 
 include_directories(
@@ -109,6 +111,18 @@ target_link_libraries(airsim_node
     ${OpenCV_LIBS}
  )
 
+add_executable(2airsim_node
+    src/main3.cpp
+    ${SOURCEFILES}
+)
+
+
+target_link_libraries(2airsim_node
+    AirLib
+    rpc
+   ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+ )
 
 add_executable(airsim_test
  src/airsim_test.cpp

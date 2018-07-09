@@ -29,7 +29,7 @@ void cb_front_rgb(const sensor_msgs::ImageConstPtr &ptr_msg)
     char filename[100];
     if (ptr_msg->header.seq % 3 == 0)
     {
-        sprintf(filename, "/home/pengrui/Documents/GaoFen_Drone/resource/img_test/r1-%d.png", ptr_msg->header.seq);
+        sprintf(filename, "/home/ubuntu/GaoFen_Drone/resource/img/f1-%d.png", ptr_msg->header.seq);
         // cv::imwrite(filename,img_rgb);
     }
 }
@@ -52,7 +52,7 @@ void cb_front_depth(const sensor_msgs::ImageConstPtr &ptr_msg)
     char filename[100];
     if (ptr_msg->header.seq % 3 == 0)
     {
-        sprintf(filename, "/home/pengrui/Documents/GaoFen_Drone/resource/img_test/r1%d.png", ptr_msg->header.seq);
+        sprintf(filename, "/home/ubuntu/GaoFen_Drone/resource/img_test/d1-%d.png", ptr_msg->header.seq);
         // cv::imwrite(filename,img_depth);
     }
 }
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
         if (c == 'q')
         {
             char filename[200];
-            sprintf(filename, "/home/pengrui/Documents/GaoFen_Drone/resource/img_test/r1%d.png", FN++);
+            sprintf(filename, "/home/ubuntu/GaoFen_Drone/resource/img2/9-%d.png", FN++);
             cv::imwrite(filename, img_rgb);
         }
         rate.sleep();

@@ -54,8 +54,7 @@ int main(int argc, char** argv) {
 
     NumberDetect num_detect(&nh);
 
-    double camD[9] = {268.3556,0,320.6049,0,268.2210,240
-    4329,0,0,1};
+    double camD[9] = {268.3556,0,320.6049,0,268.2210,240.4329,0,0,1};
     double distCoeffD[5] = {0.0013,0.0,0.0,0.0,0.0};
     Mat camera_matrix = Mat(3, 3, CV_64FC1, camD);
     Mat distortion_coefficients = Mat(5, 1, CV_64FC1, distCoeffD);

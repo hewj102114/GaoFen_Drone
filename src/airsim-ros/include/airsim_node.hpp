@@ -9,16 +9,17 @@
 #include <image_transport/image_transport.h>
 
 #include "vehicles/multirotor/api/MultirotorRpcLibClient.hpp"
-
+#include "PID.h"
 #include <iostream>
 #include <string>
-
+#include <gf_perception/Object.h>
+#include <gf_perception/ObjectList.h>
 class AirsimNode{
     public:
     AirsimNode(ros::NodeHandle* _pnh,const std::string& _ip);
     ~AirsimNode();
     std::string ip_adress;
-
+    ros::NodeHandle nh;
     ros::NodeHandle* pnh;
     ros::Publisher pub_imu;
     ros::Publisher pub_magnetic;
@@ -48,6 +49,7 @@ class AirsimNode{
     void getAllImageData(msr::airlib::MultirotorRpcLibClient* client);
 
     bool takeoff();
+    float initial_height;
     bool land();
     bool move(float pitch,float roll,float throttle,float yaw,float duration);
     bool hover();
@@ -55,4 +57,7 @@ class AirsimNode{
     void run();
     void createThread(int n);
     int FN;
+    
+    ros::Subscriber sub;
+    void  callb(const gf_perception::ObjectList& msg);
 };
