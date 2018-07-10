@@ -26,7 +26,7 @@ class PIDctrl
     outMax=_max;
     stop=false;
 	}
-	double calc(double &curErr){
+	double calc(const double &curErr){
 		sumErr += curErr;
 	double Kisum = Ki*sumErr;
 	if (Kisum > 1)
@@ -39,7 +39,14 @@ class PIDctrl
 
 	output = Kp*curErr + Kisum + Kd*dErr;
 
-	double d_throttle = output;
+	if(output >= outMax)
+	{
+		output = outMax;
+	}
+	if(output <= -outMax)
+	{
+		output = -outMax;
+	}
 	
 	return output;
 	}

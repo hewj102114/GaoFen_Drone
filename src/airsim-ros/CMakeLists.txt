@@ -137,3 +137,107 @@ ${catkin_LIBRARIES}
  ${OpenCV_LIBS}
 )
 
+add_executable(airsim_image_front_rgb
+ src/airsim_image_front_rgb.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_image_front_rgb
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
+add_executable(airsim_image_down
+ src/airsim_image_down.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_image_down
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
+
+add_executable(airsim_image_front_depth
+ src/airsim_image_front_depth.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_image_front_depth
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
+
+add_executable(airsim_imu
+ src/airsim_imu.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_imu
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
+
+add_executable(airsim_gps
+ src/airsim_gps.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_gps
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
+
+
+add_executable(airsim_barometer
+ src/airsim_barometer.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_barometer
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
+
+
+add_executable(airsim_magnetic
+ src/airsim_magnetic.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_magnetic
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
+
+add_executable(airsim_control
+ src/airsim_control.cpp
+ ${SOURCEFILES}
+)
+
+
+target_link_libraries(airsim_control
+ AirLib
+ rpc
+${catkin_LIBRARIES}
+ ${OpenCV_LIBS}
+)
