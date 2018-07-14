@@ -1,5 +1,7 @@
+#!/usr/bin/python2.7
+#coding=utf-8
 #!/home/ubuntu/anaconda2/bin/python2.7
-# coding=utf-8
+#coding=utf-8
 # !/usr/bin/python2.7
 # !/home/ubuntu/anaconda2/bin/python2.7
 from __future__ import absolute_import
@@ -54,7 +56,7 @@ connection_status = team_hp = global_team_x = global_team_y = 0
 
 lose_frame_count = 0
 
-video = cv2.VideoWriter('/home/ubuntu/GaoFen_Drone/src/gf_perception/scripts/visual/demo.avi',
+video = cv2.VideoWriter('/root/GaoFen_Drone/src/gf_perception/scripts/visual/demo.avi',
                         cv2.VideoWriter_fourcc(*"MJPG"),
                         20,
                         (640, 480))
@@ -63,7 +65,7 @@ def DetectInit():
     global sess, model, mc
 
     detect_net = 'squeezeDet'
-    checkpoint = '/home/ubuntu/GaoFen_Drone/src/gf_perception/scripts/weights/model.ckpt-99999'
+    checkpoint = '/root/GaoFen_Drone/src/gf_perception/scripts/weights/model.ckpt-99999'
 
     assert detect_net == 'squeezeDet' or detect_net == 'squeezeDet+', 'Selected nueral net architecture not supported'
 
@@ -138,26 +140,67 @@ def callback_rgb(rgb):
         final_probs = np.array([final_probs])
         final_class = np.array([final_class])
 
-    print("final_boxes: {}, final_probs: {}, final_class: {}".format(final_boxes, final_probs, final_class))
+    # print("final_boxes: {}, final_probs: {}, final_class: {}".format(final_boxes, final_probs, final_class))
 
     detection_pub_list = ObjectList()
     detection_pub_list.header.stamp = rospy.Time.now()
     detection_pub_list.header.frame_id = 'detection_number'
-    detection_pub = Object()
+    
     # 5. if detected -> enter if, else -> enter empty 
     if len(final_boxes) > 0:
         # detected number
         count = final_boxes.shape[0]
         for idx in range(count):
+            detection_pub = Object()
             box = final_boxes[idx, :]
             cx, cy, w, h = box[0], box[1], box[2], box[3]
-            detection_pub.number = final_class[idx]
+
+            box_large_w=2*w
+            box_large_h=3*h
+            
+            l=int(max(0,cx-box_large_w/2))
+            r=int(min(640,cx+box_large_w/2))
+            u=int(max(0,cy-box_large_h/2))
+            d=int(min(480,cy+box_large_h/2))
+            
+            im_roi=rgb_image[u:d,l:r]
+            # threshold -> gray color 
+            imgmax=np.amax(im_roi,axis=2)
+            imgmin=np.amin(im_roi,axis=2)
+            img_gray = cv2.cvtColor(im_roi,cv2.COLOR_BGR2GRAY)
+            ret,gray_thresh = cv2.threshold(img_gray,50,255,cv2.THRESH_BINARY)
+            ret,gray_thresh2 = cv2.threshold(img_gray,120,255,cv2.THRESH_BINARY_INV)
+            
+            ret,delta_thresh = cv2.threshold(imgmax-imgmin,15,255,cv2.THRESH_BINARY_INV)
+            # ret,blue_thresh = cv2.threshold(im_roi[:,:,0],150,0,cv2.THRESH_TOZERO_INV)
+            # ret,red_thresh = cv2.threshold(im_roi[:,:,2],150,0,cv2.THRESH_TOZERO_INV)
+            thresh= gray_thresh  & delta_thresh & gray_thresh2
+            ret,imgthresh = cv2.threshold(thresh,30,255,cv2.THRESH_BINARY)
+            gray_ratio=np.sum(imgthresh)/imgthresh.shape[0]/imgthresh.shape[1]
+
+            if gray_ratio>20:
+                detection_pub.type=2 #ground
+            elif gray_ratio>30:
+                detection_pub.type=3 #ground
+            elif gray_ratio<8:
+                detection_pub.type=1 
+            else:
+                detection_pub.type=0 
+            print('NUM %d  Ratio  %f Size :%f' %(final_class[idx]+1,gray_ratio,w*h))
+            
+            # cv2.imshow("boi",gray_thresh)
+            # cv2.imshow("33i",gray_thresh2)
+            # cv2.imshow("roi",delta_thresh)
+            # cv2.imshow("oi",thresh)
+            # cv2.waitKey(10)
+            detection_pub.number = final_class[idx]+1
             detection_pub.center.x = cx
             detection_pub.center.y = cy
             detection_pub.size.x = w
             detection_pub.size.y = h
             detection_pub_list.count = count
             detection_pub_list.object.append(detection_pub)
+            
     else:
         detection_pub_list.count = 0
         detection_pub_list.object = []
@@ -168,7 +211,7 @@ def callback_rgb(rgb):
     times['filter'] = t_filter - t_detect
     times['total'] = time.time() - t_start
     time_str = 'Total time: {:.4f}, detection time: {:.4f}, filter time: {:.4f}'.format(times['total'], times['detect'], times['filter'])
-    print(time_str)
+    # print(time_str)
 
     # 7. Visual results
     cls2clr = {'1': (0, 0, 255), 

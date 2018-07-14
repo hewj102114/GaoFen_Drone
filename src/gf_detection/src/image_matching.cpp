@@ -4,7 +4,7 @@
 
 using namespace cv;
 using namespace std;
-#define SHOW_IMAGE
+//#define SHOW_IMAGE
 #define DATA_FREQ 100000
 #define CALC_TIME_START ros::Time start = ros::Time::now();
 #define CALC_TIME_END ROS_ERROR("TIME : %f FPS: %f", (ros::Time::now() - start).toSec(), 1.0 / (ros::Time::now() - start).toSec()); \
@@ -30,9 +30,9 @@ void ImageMatching::imageCb(const sensor_msgs::ImageConstPtr &msg)
     return;
   }
   gf_perception::ObjectList object_list_msg;
-  CALC_TIME_START
+
   imageProcess(cv_ptr->image, object_list_msg);
-  CALC_TIME_END
+
   
   object_list_msg.header.stamp=ros::Time::now();
   object_pub.publish(object_list_msg);
@@ -126,6 +126,7 @@ void ImageMatching::digitSquares(IplImage *img, int minarea, int maxarea, gf_per
                 rect_list.count++;
                 gf_perception::Object object_msg;
                 object_msg.number=num;
+                object_msg.type=2;
                 object_msg.center.x=rect.center.x;
                 object_msg.center.y=rect.center.y;
                 object_msg.size.x=rect.size.width;
@@ -274,8 +275,8 @@ int ImageMatching::t_rect(IplImage *img, CvPoint *pt0, CvPoint *pt1, CvPoint *pt
   //密集透视变换
   cvWarpPerspective(img, img_dst, warp_matrix);
   #ifdef SHOW_IMAGE
-  cvShowImage("Image window2", img_dst);
-  cvWaitKey(3);
+  // cvShowImage("Image window2", img_dst);
+  // cvWaitKey(3);
   #endif
 
   //char ad[128]={0};
@@ -305,7 +306,7 @@ int ImageMatching::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, CvPoi
   for (int h = 0; h <= 10; h++)
   {
     char name[128];
-    sprintf(name, "/home/ubuntu/GaoFen_Drone/src/gf_detection/resource/%d.jpg", h);
+    sprintf(name, "/root/GaoFen_Drone/src/gf_detection/resource/%d.jpg", h);
     IplImage *timg = cvLoadImage(name, CV_LOAD_IMAGE_GRAYSCALE);
     cvCvtColor(src, src_s, CV_BGR2GRAY);
     cvThreshold(timg, timg, 0, 255, CV_THRESH_OTSU);
@@ -334,11 +335,10 @@ int ImageMatching::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, CvPoi
     cvReleaseImage(&timg);
   }
   //cvShowImage( WINDOWname, result );
-  ROS_INFO("%d", min);
   if (min < 50000)
   {
-    printf("最小距离是%d ", min);
-    printf("匹配到第%d个模板匹配的数字是%d\n", serieNum, serieNum);
+    //printf("最小距离是%d ", min);
+    printf(" 数字是%d  Center %f,%f\n", serieNum, (pt0->x + pt2->x) / 2.0, (pt0->y + pt2->y) / 2.0);
 
     char num[128];
     sprintf(num, "%d", serieNum);

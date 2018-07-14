@@ -26,6 +26,8 @@ class PIDctrl
     outMax=_max;
     stop=false;
 	}
+	
+
 	double calc(const double &curErr){
 		sumErr += curErr;
 	double Kisum = Ki*sumErr;

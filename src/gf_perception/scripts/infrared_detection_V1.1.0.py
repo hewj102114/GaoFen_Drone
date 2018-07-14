@@ -1,5 +1,7 @@
-#!/usr/bin/python2.7
+# !/home/ubuntu/anaconda2/bin/python2.7
+
 # coding=utf-8
+#!/usr/bin/python2.7
 # !/usr/bin/python2.7
 # !/home/ubuntu/anaconda2/bin/python2.7
 from __future__ import absolute_import

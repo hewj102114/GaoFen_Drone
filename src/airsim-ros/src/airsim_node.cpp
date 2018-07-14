@@ -53,10 +53,8 @@ void AirsimNode::getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient *clien
     std::vector<ImageRequest> request = {
         ImageRequest(0, ImageType::Scene)};
 
-    CALC_TIME_START;
     std::vector<ImageResponse> response = client->simGetImages(request);
 
-    CALC_TIME_END;
     cv::Mat img_front_rgb = cv::imdecode(response[0].image_data_uint8, cv::IMREAD_COLOR);
 
     cv_bridge::CvImage msg_front_rgb;
@@ -367,7 +365,7 @@ void AirsimNode::createThread(int n)
 
             break;
         case 1:
-            //getMagneticData(client);
+            getMagneticData(private_client);
             thread_name = "getMagneticData";
 
             break;
@@ -409,7 +407,7 @@ void AirsimNode::createThread(int n)
 void AirsimNode::run()
 {
     RUNNING_FLAG = 1;
-    int thread_num[] = {4};
+    int thread_num[] = {0,1,2,3,4,5,6};
     int N = sizeof(thread_num) / sizeof(int);
     std::thread t[N];
 

@@ -18,7 +18,6 @@ msr::airlib::ImuData airsim_img_data;
     imu_data.linear_acceleration.x = airsim_img_data.linear_acceleration(0);
     imu_data.linear_acceleration.y = airsim_img_data.linear_acceleration(1);
     imu_data.linear_acceleration.z = airsim_img_data.linear_acceleration(2);
-
 }
 
 int main(int argc, char **argv)

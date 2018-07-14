@@ -30,7 +30,7 @@ void NumberDetect::detect(Mat &raw_img_rgb, Mat &raw_img_depth)
     colorExteact(raw_img_rgb, img_threshold);
     //求与
     bitwise_and(img_threshold, img_depth_8u, img_fusion);
-    imshow("dep", img_threshold);
+  //  imshow("dep", img_threshold);
     //轮廓提取
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;

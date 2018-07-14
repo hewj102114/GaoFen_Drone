@@ -66,18 +66,18 @@ int main(int argc, char** argv) {
         d_throttle = pid_height.calc(d_height);
 
         //ROS_INFO("H: %f  D: %f" , d_height , d_throttle);   
-        //airsim_node.move(-0.0 , 0 , d_throttle  , 0.1 , 5);  
+        airsim_node.move(-0.0 , 0 , d_throttle  , 0.1 , 5);  
 
-        break;
+        //break;
 
         ros::spinOnce();
         rate.sleep();
     }
-    airsim_node.land();
-    sleep(1);
-    airsim_node.takeoff();
-    sleep(1);
-    airsim_node.land();
+    // airsim_node.land();
+    // sleep(1);
+    // airsim_node.takeoff();
+    // sleep(1);
+    // airsim_node.land();
 
     int exit_flag_sum=accumulate(airsim_node.exit_ready_flag,airsim_node.exit_ready_flag+7,(int)0);
     while(exit_flag_sum<thread_size){
