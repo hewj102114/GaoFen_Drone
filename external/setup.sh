@@ -29,7 +29,8 @@ if [[ -d "./build/CMakeFiles" ]]; then
 fi
 
 if [[ ! -d $build_dir ]]; then
-    mkdir $build_dir   
+    mkdir $build_dir
+    mkdir ../src/airsim-ros/lib    
 fi
 
 cd $build_dir

@@ -4,8 +4,6 @@
 <node pkg="airsim-ros" type="airsim_image_down" name="airsim_image_down" output="screen"/>
 <node pkg="airsim-ros" type="airsim_imu" name="airsim_imu" output="screen"/>
 
-<node pkg="airsim-ros" type="airsim_gps" name="airsim_gps" output="screen"/>
-
 <node pkg="airsim-ros" type="airsim_magnetic" name="airsim_magnetic" output="screen"/>
 
 <node pkg="airsim-ros" type="airsim_barometer" name="airsim_barometer" output="screen"/>

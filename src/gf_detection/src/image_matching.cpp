@@ -1,6 +1,6 @@
 #include <image_matching.hpp>
 #include <opencv2/opencv.hpp>
-
+#include <ros/package.h>
 
 using namespace cv;
 using namespace std;
@@ -303,10 +303,12 @@ int ImageMatching::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, CvPoi
   int tmp1;
   int min = 1000000;
   int serieNum = -1;
+  std::string resource_dir=ros::package::getPath("gf_detection");
+  cout<<"############   "<<resource_dir<<endl;
   for (int h = 0; h <= 10; h++)
   {
     char name[128];
-    sprintf(name, "/root/GaoFen_Drone/src/gf_detection/resource/%d.jpg", h);
+    sprintf(name, "%s/resource/%d.jpg",resource_dir.c_str(), h);
     IplImage *timg = cvLoadImage(name, CV_LOAD_IMAGE_GRAYSCALE);
     cvCvtColor(src, src_s, CV_BGR2GRAY);
     cvThreshold(timg, timg, 0, 255, CV_THRESH_OTSU);

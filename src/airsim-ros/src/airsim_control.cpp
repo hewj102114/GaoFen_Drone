@@ -519,7 +519,7 @@ void AirsimControl::run()
                 //下视检测
                 else if (detect_state == 1)
                 {
-                    ROS_INFO("Down Cam %d targetnum %d(%f,%f)", object_down.number, detect_num, object_down.center.x, object_down.center.y);
+                    ROS_INFO("Down Cam %d targetnum %d (%f,%f)", object_down.number, detect_num, object_down.center.x, object_down.center.y);
                     if (object_down.number == detect_num)
                     {
                         lost_detect_down_cam = 0;
@@ -533,9 +533,15 @@ void AirsimControl::run()
                             control_roll = 0;
                         if (dy < 10)
                             control_pitch = 0;
-                        if ((object_down.size.x * object_down.size.y) < 30000 && dy < 80 && dx < 100)
+                        if ((object_down.size.x * object_down.size.y) < 20000 && dy < 80 && dx < 100)
                         {
-                            target_height = target_height - 0.05;
+                            target_height = target_height - 0.04;
+                        }
+                        else if ((object_down.size.x * object_down.size.y) <30000 && dy < 80 && dx < 100){
+                            target_height = target_height - 0.02;
+                        }
+                        else if((object_down.size.x * object_down.size.y) > 40000){
+                            target_height = target_height + 0.02;
                         }
                         if (dy < 30 && dx < 30 && (object_down.size.x * object_down.size.y) > 30000)
                         {
@@ -555,7 +561,7 @@ void AirsimControl::run()
                     {
 
                         lost_detect_down_cam++;
-                        if (lost_detect_down_cam > 10)
+                        if (lost_detect_down_cam > 20)
                         {
                             detect_state = 0;
                         }
@@ -574,7 +580,9 @@ void AirsimControl::run()
                     }
                     if (detect_num==5){
                         move(0, -0.05, control_throttle, control_yaw, 5);
-                        sleep(2);
+                        sleep(4);
+                         move(0, 0.05, control_throttle, control_yaw, 5);
+                         sleep(4);
                     }
                 }
                 else

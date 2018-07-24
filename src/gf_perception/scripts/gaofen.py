@@ -1,7 +1,7 @@
 #!/usr/bin/python2.7
-#coding=utf-8
+# coding=utf-8
 #!/home/ubuntu/anaconda2/bin/python2.7
-#coding=utf-8
+# coding=utf-8
 # !/usr/bin/python2.7
 # !/home/ubuntu/anaconda2/bin/python2.7
 from __future__ import absolute_import
@@ -40,7 +40,7 @@ from nets import *
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 # from sklearn.cluster import KMeans
-
+import rospkg
 
 frame_rate_list = np.zeros(10)
 count = 0
@@ -55,17 +55,19 @@ last_enemy_position = ObjectList()
 connection_status = team_hp = global_team_x = global_team_y = 0
 
 lose_frame_count = 0
+pkg_path = rospkg.RosPack().get_path("gf_perception")
 
-video = cv2.VideoWriter('/root/GaoFen_Drone/src/gf_perception/scripts/visual/demo.avi',
+video = cv2.VideoWriter(pkg_path+'/scripts/visual/demo.avi',
                         cv2.VideoWriter_fourcc(*"MJPG"),
                         20,
                         (640, 480))
+
 
 def DetectInit():
     global sess, model, mc
 
     detect_net = 'squeezeDet'
-    checkpoint = '/root/GaoFen_Drone/src/gf_perception/scripts/weights/model.ckpt-99999'
+    checkpoint = pkg_path + '/scripts/weights/model.ckpt-99999'
 
     assert detect_net == 'squeezeDet' or detect_net == 'squeezeDet+', 'Selected nueral net architecture not supported'
 
@@ -91,7 +93,7 @@ def DetectInit():
     # with tf.Session(config=config) as sess:
     sess = tf.Session(config=config)
     saver.restore(sess, checkpoint)
-    
+
 
 def callback_rgb(rgb):
     global rgb_image, count
@@ -104,12 +106,12 @@ def callback_rgb(rgb):
         rgb_image = bridge.imgmsg_to_cv2(rgb, desired_encoding="8UC3")
     except CvBridgeError as error:
         print(error)
-    
+
     count = count + 1
     times = {}
     t_start = time.time()
 
-    # 2. Preprocessing 
+    # 2. Preprocessing
     im = rgb_image
     im = im.astype(np.float32, copy=False)
     im = cv2.resize(im, (mc.IMAGE_WIDTH, mc.IMAGE_HEIGHT))
@@ -119,8 +121,9 @@ def callback_rgb(rgb):
     times['reshape'] = t_reshape - t_start
 
     # 3. Use SqueezeDet to detect number
-    det_boxes, det_probs, det_class = sess.run([model.det_boxes, model.det_probs, model.det_class], feed_dict={model.image_input: [input_image]})
-    
+    det_boxes, det_probs, det_class = sess.run(
+        [model.det_boxes, model.det_probs, model.det_class], feed_dict={model.image_input: [input_image]})
+
     t_detect = time.time()
     times['detect'] = t_detect - t_reshape
 
@@ -128,7 +131,8 @@ def callback_rgb(rgb):
     final_boxes, final_probs, final_class = model.filter_prediction(det_boxes[0],
                                                                     det_probs[0],
                                                                     det_class[0])
-    keep_idx = np.squeeze(np.argwhere(np.array(final_probs) > mc.PLOT_PROB_THRESH))
+    keep_idx = np.squeeze(np.argwhere(
+        np.array(final_probs) > mc.PLOT_PROB_THRESH))
 
     final_boxes = np.array(final_boxes)[keep_idx, :]
     final_probs = np.array(final_probs)[keep_idx]
@@ -145,8 +149,8 @@ def callback_rgb(rgb):
     detection_pub_list = ObjectList()
     detection_pub_list.header.stamp = rospy.Time.now()
     detection_pub_list.header.frame_id = 'detection_number'
-    
-    # 5. if detected -> enter if, else -> enter empty 
+
+    # 5. if detected -> enter if, else -> enter empty
     if len(final_boxes) > 0:
         # detected number
         count = final_boxes.shape[0]
@@ -155,39 +159,44 @@ def callback_rgb(rgb):
             box = final_boxes[idx, :]
             cx, cy, w, h = box[0], box[1], box[2], box[3]
 
-            box_large_w=2*w
-            box_large_h=3*h
-            
-            l=int(max(0,cx-box_large_w/2))
-            r=int(min(640,cx+box_large_w/2))
-            u=int(max(0,cy-box_large_h/2))
-            d=int(min(480,cy+box_large_h/2))
-            
-            im_roi=rgb_image[u:d,l:r]
-            # threshold -> gray color 
-            imgmax=np.amax(im_roi,axis=2)
-            imgmin=np.amin(im_roi,axis=2)
-            img_gray = cv2.cvtColor(im_roi,cv2.COLOR_BGR2GRAY)
-            ret,gray_thresh = cv2.threshold(img_gray,50,255,cv2.THRESH_BINARY)
-            ret,gray_thresh2 = cv2.threshold(img_gray,120,255,cv2.THRESH_BINARY_INV)
-            
-            ret,delta_thresh = cv2.threshold(imgmax-imgmin,15,255,cv2.THRESH_BINARY_INV)
+            box_large_w = 2*w
+            box_large_h = 3*h
+
+            l = int(max(0, cx-box_large_w/2))
+            r = int(min(640, cx+box_large_w/2))
+            u = int(max(0, cy-box_large_h/2))
+            d = int(min(480, cy+box_large_h/2))
+
+            im_roi = rgb_image[u:d, l:r]
+            # threshold -> gray color
+            imgmax = np.amax(im_roi, axis=2)
+            imgmin = np.amin(im_roi, axis=2)
+            img_gray = cv2.cvtColor(im_roi, cv2.COLOR_BGR2GRAY)
+            ret, gray_thresh = cv2.threshold(
+                img_gray, 50, 255, cv2.THRESH_BINARY)
+            ret, gray_thresh2 = cv2.threshold(
+                img_gray, 120, 255, cv2.THRESH_BINARY_INV)
+
+            ret, delta_thresh = cv2.threshold(
+                imgmax-imgmin, 15, 255, cv2.THRESH_BINARY_INV)
             # ret,blue_thresh = cv2.threshold(im_roi[:,:,0],150,0,cv2.THRESH_TOZERO_INV)
             # ret,red_thresh = cv2.threshold(im_roi[:,:,2],150,0,cv2.THRESH_TOZERO_INV)
-            thresh= gray_thresh  & delta_thresh & gray_thresh2
-            ret,imgthresh = cv2.threshold(thresh,30,255,cv2.THRESH_BINARY)
-            gray_ratio=np.sum(imgthresh)/imgthresh.shape[0]/imgthresh.shape[1]
+            thresh = gray_thresh & delta_thresh & gray_thresh2
+            ret, imgthresh = cv2.threshold(thresh, 30, 255, cv2.THRESH_BINARY)
+            gray_ratio = np.sum(imgthresh) / \
+                imgthresh.shape[0]/imgthresh.shape[1]
 
-            if gray_ratio>20:
-                detection_pub.type=2 #ground
-            elif gray_ratio>30:
-                detection_pub.type=3 #ground
-            elif gray_ratio<8:
-                detection_pub.type=1 
+            if gray_ratio > 20:
+                detection_pub.type = 2  # ground
+            elif gray_ratio > 30:
+                detection_pub.type = 3  # ground
+            elif gray_ratio < 8:
+                detection_pub.type = 1
             else:
-                detection_pub.type=0 
-            print('NUM %d  Ratio  %f Size :%f' %(final_class[idx]+1,gray_ratio,w*h))
-            
+                detection_pub.type = 0
+            print('NUM %d  Ratio  %f Size :%f' %
+                  (final_class[idx]+1, gray_ratio, w*h))
+
             # cv2.imshow("boi",gray_thresh)
             # cv2.imshow("33i",gray_thresh2)
             # cv2.imshow("roi",delta_thresh)
@@ -200,7 +209,7 @@ def callback_rgb(rgb):
             detection_pub.size.y = h
             detection_pub_list.count = count
             detection_pub_list.object.append(detection_pub)
-            
+
     else:
         detection_pub_list.count = 0
         detection_pub_list.object = []
@@ -210,12 +219,13 @@ def callback_rgb(rgb):
     t_filter = time.time()
     times['filter'] = t_filter - t_detect
     times['total'] = time.time() - t_start
-    time_str = 'Total time: {:.4f}, detection time: {:.4f}, filter time: {:.4f}'.format(times['total'], times['detect'], times['filter'])
+    time_str = 'Total time: {:.4f}, detection time: {:.4f}, filter time: {:.4f}'.format(
+        times['total'], times['detect'], times['filter'])
     # print(time_str)
 
     # 7. Visual results
-    cls2clr = {'1': (0, 0, 255), 
-               '2': (0, 255, 0), 
+    cls2clr = {'1': (0, 0, 255),
+               '2': (0, 255, 0),
                '3': (255, 0, 0),
                '4': (255, 255, 0),
                '5': (0, 255, 255),
@@ -225,16 +235,18 @@ def callback_rgb(rgb):
                '9': (0, 200, 0),
                '10': (0, 0, 200)}
     if mc.VISUAL:
-        im = _draw_box(im, final_boxes, [mc.CLASS_NAMES[idx] + ':%.2f' % prob for idx, prob in zip(final_class, final_probs)], cdict=cls2clr)
+        im = _draw_box(im, final_boxes, [mc.CLASS_NAMES[idx] + ':%.2f' %
+                                         prob for idx, prob in zip(final_class, final_probs)], cdict=cls2clr)
 
         if mc.DRAW_Video:
             im = im.astype('uint8')
             video.write(im)
-            
+
         if mc.SHOW:
             im = im.astype('uint8')
             cv2.imshow('demo', im)
             cv2.waitKey(3)
+
 
 rospy.init_node('gaofen_detection')
 DetectInit()
