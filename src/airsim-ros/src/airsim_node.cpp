@@ -214,17 +214,17 @@ void AirsimNode::getMagneticData(msr::airlib::MultirotorRpcLibClient *client)
         airsim_magnetic_data.magnetic_field_body(2);
     pub_magnetic.publish(magnetic_data);
 }
-void AirsimNode::getGPSData(msr::airlib::MultirotorRpcLibClient *client)
-{
-    msr::airlib::GpsData airsim_aps_data;
-    airsim_aps_data = client->getGpsLocation();
-    gps_data.header.frame_id = "base_link";
-    gps_data.header.stamp = ros::Time::now();
-    gps_data.latitude = airsim_aps_data.latitude;
-    gps_data.longitude = airsim_aps_data.longitude;
-    gps_data.altitude = airsim_aps_data.altitude;
-    pub_gps.publish(gps_data);
-}
+// void AirsimNode::getGPSData(msr::airlib::MultirotorRpcLibClient *client)
+// {
+//     msr::airlib::GpsData airsim_aps_data;
+//     airsim_aps_data = client->getGpsLocation();
+//     gps_data.header.frame_id = "base_link";
+//     gps_data.header.stamp = ros::Time::now();
+//     gps_data.latitude = airsim_aps_data.latitude;
+//     gps_data.longitude = airsim_aps_data.longitude;
+//     gps_data.altitude = airsim_aps_data.altitude;
+//     pub_gps.publish(gps_data);
+// }
 void AirsimNode::getBarometerData(msr::airlib::MultirotorRpcLibClient *client)
 {
     msr::airlib::BarometerData airsim_barometer_data;

@@ -188,18 +188,18 @@ ${catkin_LIBRARIES}
  ${OpenCV_LIBS}
 )
 
-add_executable(airsim_gps
- src/airsim_gps.cpp
- ${SOURCEFILES}
-)
+# add_executable(airsim_gps
+#  src/airsim_gps.cpp
+#  ${SOURCEFILES}
+# )
 
 
-target_link_libraries(airsim_gps
- AirLib
- rpc
-${catkin_LIBRARIES}
- ${OpenCV_LIBS}
-)
+# target_link_libraries(airsim_gps
+#  AirLib
+#  rpc
+# ${catkin_LIBRARIES}
+#  ${OpenCV_LIBS}
+# )
 
 
 add_executable(airsim_barometer

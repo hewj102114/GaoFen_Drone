@@ -41,7 +41,7 @@ class AirsimNode{
 
     void getImuData(msr::airlib::MultirotorRpcLibClient* client);
     void getMagneticData(msr::airlib::MultirotorRpcLibClient* client);
-    void getGPSData(msr::airlib::MultirotorRpcLibClient* client);
+    // void getGPSData(msr::airlib::MultirotorRpcLibClient* client);
     void getBarometerData(msr::airlib::MultirotorRpcLibClient* client);
     void getImageFrontRgbData(msr::airlib::MultirotorRpcLibClient* client);
     void getImageFrontDepthData(msr::airlib::MultirotorRpcLibClient* client);

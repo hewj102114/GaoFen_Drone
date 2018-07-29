@@ -60,10 +60,6 @@ bool MultirotorRpcLibClient::hover()
 {
     return static_cast<rpc::client*>(getClient())->call("hover").as<bool>();
 }
-GpsData MultirotorRpcLibClient::getGpsLocation()
-{
-	return static_cast<rpc::client*>(getClient())->call("getGpsLocation").as<MultirotorRpcLibAdapators::GpsData>().to();
-}
 
 BarometerData MultirotorRpcLibClient::getBarometerdata()
 {

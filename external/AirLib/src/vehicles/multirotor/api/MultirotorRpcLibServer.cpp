@@ -48,12 +48,6 @@ MultirotorRpcLibServer::MultirotorRpcLibServer(MultirotorApi* drone, string serv
 
     (static_cast<rpc::server*>(getServer()))->
         bind("hover", [&]() -> bool { return getDroneApi()->hover(); });
-
-	(static_cast<rpc::server*>(getServer()))->
-		bind("getGpsLocation", [&]() -> MultirotorRpcLibAdapators::GpsData {
-		return MultirotorRpcLibAdapators::GpsData(getDroneApi()->getGpsLocation());
-	});
-
 	(static_cast<rpc::server*>(getServer()))->
 		bind("getBarometerdata", [&]() -> MultirotorRpcLibAdapators::BarometerData {
 		return MultirotorRpcLibAdapators::BarometerData(getDroneApi()->getBarometerdata());
