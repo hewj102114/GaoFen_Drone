@@ -27,11 +27,13 @@ int main(int argc, char **argv)
     control_client->confirmConnection();
     ros::Publisher pub_barometer =
         nh.advertise<geometry_msgs::Vector3Stamped>("airsim/barometer", 1);
+                    ros::Rate rate(32);
     while (ros::ok())
     {
         geometry_msgs::Vector3Stamped barometer_data;
         getBarometerData(barometer_data);
         pub_barometer.publish(barometer_data);
         ros::spinOnce();
+        rate.sleep();
     }
 }

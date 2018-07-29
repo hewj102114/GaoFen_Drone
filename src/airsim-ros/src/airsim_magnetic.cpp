@@ -29,11 +29,13 @@ int main(int argc, char **argv)
     control_client->confirmConnection();
     ros::Publisher  pub_magnetic =
         nh.advertise<sensor_msgs::MagneticField>("airsim/magnetic", 1);
+            ros::Rate rate(32);
     while (ros::ok())
     {
            sensor_msgs::MagneticField magnetic_data;
         getMagneticData(magnetic_data);
         pub_magnetic.publish(magnetic_data);
         ros::spinOnce();
+        rate.sleep();
     }
 }

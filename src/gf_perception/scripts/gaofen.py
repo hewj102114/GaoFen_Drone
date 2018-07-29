@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/home/ubuntu/anaconda2/bin/python2.7
 # coding=utf-8
 #!/home/ubuntu/anaconda2/bin/python2.7
 # coding=utf-8

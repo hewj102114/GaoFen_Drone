@@ -28,11 +28,13 @@ int main(int argc, char **argv)
     control_client = new msr::airlib::MultirotorRpcLibClient(ip);
     control_client->confirmConnection();
     ros::Publisher pub_imu = nh.advertise<sensor_msgs::Imu>("airsim/imu", 1);
+    ros::Rate rate(120);
     while (ros::ok())
     {
         sensor_msgs::Imu imu_data;
         getImuData(imu_data);
         pub_imu.publish(imu_data);
         ros::spinOnce();
+        // rate.sleep();
     }
 }
