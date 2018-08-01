@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <tf/transform_datatypes.h>
+#include <std_msgs/Int16.h>
 using namespace std;
 double kp, ki, kd, pid_max, kp2, ki2, kd2, pid_max2;
 AirsimControl::AirsimControl()
@@ -15,12 +16,14 @@ AirsimControl::AirsimControl()
     sub_object_down = nh.subscribe("airsim/object/down", 1, &AirsimControl::cb_object_down, this);
     sub_object_circle = nh.subscribe("airsim/depth/circle", 1, &AirsimControl::cb_object_circle, this);
     sub_err = nh.subscribe("airsim/depth/error", 1, &AirsimControl::cb_err, this);
+    pub_front_camera_pose = nh.advertise<std_msgs::Int16>("airsim/front_camera/pose_state", 1);
     detect_num = -1;
     memset(target_mode, 0, sizeof(int) * 11);
     memset(target_mode_count, 0, sizeof(int) * 11 * 2);
 
     control_client = new msr::airlib::MultirotorRpcLibClient("192.168.1.100");
-    control_client->confirmConnection();error_code=0;
+    control_client->confirmConnection();
+    error_code = 0;
 }
 
 void AirsimControl::cb_imu(const sensor_msgs::Imu &msg)
@@ -39,8 +42,9 @@ void AirsimControl::cb_barometer(const geometry_msgs::Vector3Stamped &msg)
 {
     msg_barometer = msg;
 }
-void AirsimControl::cb_err(const std_msgs::Int16 &msg){
-    error_code=msg.data;
+void AirsimControl::cb_err(const std_msgs::Int16 &msg)
+{
+    error_code = msg.data;
 }
 void AirsimControl::cb_object_front(const gf_perception::ObjectList &msg)
 {
@@ -112,7 +116,7 @@ void AirsimControl::run()
     target_mode[0] = 2;
     target_mode[1] = 2;
     target_mode[2] = 2;
-    target_mode[3] = 0;
+    target_mode[3] = 2;
     target_mode[4] = 0;
     target_mode[5] = 0;
     target_mode[10] = 2;
@@ -128,11 +132,11 @@ void AirsimControl::run()
     pid_height.init(kp, ki, kd, pid_max); //0.12, 0.0018, 1.5, 5
     double target_height = 15;
     PIDctrl pid_pitch;
-    pid_pitch.init(0.00005, 0, 0.01, 0.21);
+    pid_pitch.init(0.000052, 0, 0.03, 0.1);
     PIDctrl pid_roll;
-    pid_roll.init(0.00005, 0, 0.01, 0.21);
+    pid_roll.init( 0.000052, 0, 0.03, 0.1);
     PIDctrl pid_yaw;
-    pid_yaw.init(0.1, 0, 0, 0.1);
+    pid_yaw.init(1, 0, 0, 1);
     double target_yaw;
 
     //标志位
@@ -148,6 +152,7 @@ void AirsimControl::run()
     int count_detect_down_cam = 0;
     int lost_detect_down_cam = 0;
     int count_center_down_cam = 0;
+    int down_search_mode = 0; //0 - 前视 1 -向右 2 - 向左
 
     ros::Rate rate(30);
 
@@ -173,6 +178,7 @@ void AirsimControl::run()
         control_pitch = 0;
         control_yaw = 0;
         hover_flag = 0;
+        std_msgs::Int16 front_cam_pose_msg;
         //数字
         if (detect_num > 0 && detect_num < 11)
         {
@@ -180,7 +186,7 @@ void AirsimControl::run()
             if (target_mode[detect_num] == 0)
             {
                 //寻找
-
+                pid_yaw.init(0.15, 0, 0, 0.1);
                 if (detect_state == 0)
                 {
                     if (object_front.number != detect_num)
@@ -268,6 +274,7 @@ void AirsimControl::run()
             //障碍圈
             if (target_mode[detect_num] == 1)
             {
+                pid_yaw.init(0.15, 0, 0, 0.1);
                 if (detect_state == 0)
                 {
 
@@ -301,12 +308,12 @@ void AirsimControl::run()
                         {
                             if (detect_num == 4 && target_height < initial_height + 6)
                             {
-                               // target_height += 0.03;
+                                // target_height += 0.03;
                                 control_pitch = 0.015;
                             }
                             else if (detect_num == 5 && target_height > initial_height - 1)
                             {
-                               // target_height -= 0.03;
+                                // target_height -= 0.03;
                                 control_pitch = 0.015;
                             }
                         }
@@ -486,10 +493,12 @@ void AirsimControl::run()
             //停机坪
             if (target_mode[detect_num] == 2)
             {
+                pid_yaw.init(1, 0, 0, 1);
                 //寻找目标
                 if (detect_state == 0)
                 {
-                    ROS_INFO("Finding  target height %f", target_height);
+                    ROS_INFO("Finding  target  height %d", count_detect_down_cam);
+                    target_height = 20;
                     if (object_down.number == detect_num)
                     {
                         count_detect_down_cam++;
@@ -502,18 +511,54 @@ void AirsimControl::run()
                     }
                     if (count_detect_down_cam > 3)
                     {
-                        detect_state = 1;
-                        count_detect_down_cam = 0;
+                        target_yaw = initial_yaw;
+                        down_search_mode=0;
+                        if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.1)
+                        {
+                            detect_state = 1;
+                            count_detect_down_cam = 0;
+                        }
                     }
                     else
                     {
-
-                        if (target_height < 22)
-                            target_height = target_height + 0.05;
-                        if (target_height > 22){
-                            target_height=initial_height+6;
+                        ROS_ERROR("Search %d", down_search_mode);
+                        if (down_search_mode == 0)
+                        {
+                            target_yaw = initial_yaw;
+                            // control_pitch=-0.01;
+                            if (abs(msg_barometer.vector.x - 20) < 0.2)
+                            {
+                                down_search_mode = 2;
+                            }
                         }
-                            
+                        else if (down_search_mode == 1) //左
+                        {
+                            target_yaw = initial_yaw + 1.57;
+                            if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.1)
+                            {
+                                control_pitch = -0.005;
+                                if (error_code < 150)
+                                {
+                                    down_search_mode = 2;
+                                }
+                            }
+
+                            front_cam_pose_msg.data = 2;
+                        }
+                        else if (down_search_mode == 2) //右
+                        {
+                            target_yaw = initial_yaw - 1.57;
+                            if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.1)
+                            {
+                                control_pitch = -0.005;
+                                if (error_code < 150)
+                                {
+                                    down_search_mode = 1;
+                                }
+                            }
+
+                            front_cam_pose_msg.data = 1;
+                        }
                     }
                 }
                 //下视检测
@@ -537,10 +582,12 @@ void AirsimControl::run()
                         {
                             target_height = target_height - 0.04;
                         }
-                        else if ((object_down.size.x * object_down.size.y) <30000 && dy < 80 && dx < 100){
+                        else if ((object_down.size.x * object_down.size.y) < 30000 && dy < 80 && dx < 100)
+                        {
                             target_height = target_height - 0.02;
                         }
-                        else if((object_down.size.x * object_down.size.y) > 40000){
+                        else if ((object_down.size.x * object_down.size.y) > 40000)
+                        {
                             target_height = target_height + 0.02;
                         }
                         if (dy < 30 && dx < 30 && (object_down.size.x * object_down.size.y) > 30000)
@@ -559,9 +606,9 @@ void AirsimControl::run()
                     }
                     else
                     {
-
+                        target_height = target_height + 0.05;
                         lost_detect_down_cam++;
-                        if (lost_detect_down_cam > 20)
+                        if (lost_detect_down_cam > 100)
                         {
                             detect_state = 0;
                         }
@@ -575,14 +622,16 @@ void AirsimControl::run()
                     detect_num++;
                     detect_state = 0;
                     takeoff(&pid_height);
-                    if (target_mode[detect_num]!= 2){
-                        target_height=initial_height+1;
+                    if (target_mode[detect_num] != 2)
+                    {
+                        target_height = initial_height + 1;
                     }
-                    if (detect_num==5){
+                    if (detect_num == 5)
+                    {
                         move(0, -0.05, control_throttle, control_yaw, 5);
                         sleep(4);
-                         move(0, 0.05, control_throttle, control_yaw, 5);
-                         sleep(4);
+                        move(0, 0.05, control_throttle, control_yaw, 5);
+                        sleep(4);
                     }
                 }
                 else
@@ -596,11 +645,20 @@ void AirsimControl::run()
         {
             ;
         }
-        // if (error_code<230 && detect_state<4 && detect_num>1){
-        //     target_height+=0.05;
-        //     control_pitch=0.02;
-        //     }
-        control_yaw = pid_yaw.calc(tf::getYaw(msg_imu.orientation) - target_yaw);
+
+        float current_yaw=tf::getYaw(msg_imu.orientation);
+        if (target_yaw > 0 && current_yaw < 0 && (target_yaw - current_yaw) > 3.14)
+        {
+            control_yaw = pid_yaw.calc(current_yaw + 6.28 - target_yaw);
+        }
+        else if (target_yaw < 0 && current_yaw > 0 && (current_yaw - target_yaw) > 3.14)
+        {
+            control_yaw = pid_yaw.calc(-(target_yaw + 6.28 - current_yaw));
+        }
+        else
+        {
+            control_yaw = pid_yaw.calc(current_yaw-target_yaw );
+        }
         double d_height = target_height - msg_barometer.vector.x;
         control_throttle = pid_height.calc(d_height);
         ROS_INFO("Target H:%f dH: %f Target Y:%f  dY,%f", target_height, d_height, target_yaw, tf::getYaw(msg_imu.orientation) - target_yaw);
@@ -609,6 +667,7 @@ void AirsimControl::run()
             control_client->hover();
         else
             move(control_pitch, control_roll, control_throttle, control_yaw, 5);
+        pub_front_camera_pose.publish(front_cam_pose_msg);
         ros::spinOnce();
         rate.sleep();
     }
@@ -650,11 +709,7 @@ bool AirsimControl::takeoff(PIDctrl *pid)
     control_client->hover();
     ROS_INFO("Take Off Finish");
 }
-// bool AirsimControl::land()
-// {
-//     control_client->armDisarm(false);
-//     sleep(8);
-// }
+
 bool AirsimControl::land()
 {
     PIDctrl pid_height;
@@ -758,7 +813,7 @@ int main(int argc, char **argv)
     private_nh.getParam("kd2", kd2);
     private_nh.getParam("max2", pid_max2);
     AirsimControl airsim_ctrl;
-    sleep(10);
+    sleep(3);
     airsim_ctrl.run();
 }
 

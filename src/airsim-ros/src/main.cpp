@@ -51,11 +51,13 @@ int main(int argc, char** argv) {
     //************* 控制部分 *****************
     airsim_node.takeoff();
 
-    double target_height = 25.0;
+    double target_height = 20.0;
     double d_throttle;
 
     PIDctrl pid_height;
+    PIDctrl pid_height_vel;
     pid_height.init(0.08, 0.0003 , 1.5 , 5);
+    pid_height_vel.init(0.08, 0.0003 , 1.5 , 5);
 
     ros::Rate rate(30);
     int float_fly_cnt = 0;

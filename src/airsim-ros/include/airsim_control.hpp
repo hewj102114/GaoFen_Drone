@@ -28,6 +28,8 @@ class AirsimControl{
     ros::Subscriber sub_object_circle;
     ros::Subscriber sub_err;
 
+    ros::Publisher pub_front_camera_pose;
+
     void cb_imu(const sensor_msgs::Imu& msg);
     void cb_gps(const sensor_msgs::NavSatFix& msg);
     void cb_magnetic(const sensor_msgs::MagneticField& msg);

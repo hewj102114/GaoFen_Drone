@@ -6,17 +6,21 @@
 #include <iostream>
 #include <gf_perception/Object.h>
 #include <gf_perception/ObjectList.h>
+#include "std_msgs/Int16.h"
 class ImageMatching
 {
   public:
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_;
-    ros::Publisher object_pub;    
+    ros::Publisher object_pub;  
+    ros::Subscriber campose_sub;
 
     ImageMatching();
     void imageCb(const sensor_msgs::ImageConstPtr &msg);
     void imageProcess(cv::Mat &,gf_perception::ObjectList &);
+    void camposeCallback(const std_msgs::Int16::ConstPtr& msg);
+    int campose;
 
   private:
     void digitSquares(IplImage *img, int minarea, int maxarea,gf_perception::ObjectList &rect_list);

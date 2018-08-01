@@ -4,7 +4,7 @@
 
 using namespace cv;
 using namespace std;
-//#define SHOW_IMAGE
+#define SHOW_IMAGE
 #define DATA_FREQ 100000
 #define CALC_TIME_START ros::Time start = ros::Time::now();
 #define CALC_TIME_END ROS_ERROR("TIME : %f FPS: %f", (ros::Time::now() - start).toSec(), 1.0 / (ros::Time::now() - start).toSec()); \
@@ -15,8 +15,14 @@ ImageMatching::ImageMatching() : it_(nh_)
   image_sub_ = it_.subscribe("/airsim/image/down/rgb", 1,
                              &ImageMatching::imageCb, this);
   object_pub = nh_.advertise<gf_perception::ObjectList>("airsim/object/down", 1);
+  campose_sub = nh_.subscribe("airsim/front_camera/pose_state", 1, &ImageMatching::camposeCallback, this);
 }
 
+void ImageMatching::camposeCallback(const std_msgs::Int16::ConstPtr& msg)
+{
+  campose=msg->data;
+
+}
 void ImageMatching::imageCb(const sensor_msgs::ImageConstPtr &msg)
 {
   cv_bridge::CvImagePtr cv_ptr;
@@ -40,6 +46,23 @@ void ImageMatching::imageCb(const sensor_msgs::ImageConstPtr &msg)
 
 void ImageMatching::imageProcess(cv::Mat &imgRaw, gf_perception::ObjectList &rect_list)
 {
+  if(campose==0)
+  {
+   ;
+  }
+  else if(campose==1)
+  {
+    Mat dst;  
+    transpose(imgRaw, dst); 
+    flip(dst, imgRaw, 1);
+  }
+  else if(campose==2)
+  {
+    Mat dst;  
+    transpose(imgRaw, dst);
+    flip(dst, imgRaw, 0); 
+  }
+
   IplImage p = IplImage(imgRaw);
   IplImage *pimgRaw = &p;
   IplImage *input = cvCloneImage(pimgRaw);
@@ -127,10 +150,27 @@ void ImageMatching::digitSquares(IplImage *img, int minarea, int maxarea, gf_per
                 gf_perception::Object object_msg;
                 object_msg.number=num;
                 object_msg.type=2;
-                object_msg.center.x=rect.center.x;
-                object_msg.center.y=rect.center.y;
-                object_msg.size.x=rect.size.width;
-                object_msg.size.y=rect.size.height;
+                if(campose==0)
+                {
+                  object_msg.center.x=rect.center.x;
+                  object_msg.center.y=rect.center.y;
+                  object_msg.size.x=rect.size.width ;
+                  object_msg.size.y=rect.size.height;
+                }
+                else if(campose==1)//右转
+                {
+                  object_msg.center.x=rect.center.y;
+                  object_msg.center.y=480-rect.center.x;
+                  object_msg.size.x=rect.size.height ;
+                  object_msg.size.y=rect.size.width;
+                }
+                else if(campose==2)//左转
+                {
+                  object_msg.center.x=640-rect.center.y;
+                  object_msg.center.y=rect.center.x;
+                  object_msg.size.x=rect.size.height ;
+                  object_msg.size.y=rect.size.width;
+                }
                 object_msg.size.z=rect.angle; 
                 rect_list.object.push_back(object_msg);
                   #ifdef SHOW_IMAGE

@@ -1,11 +1,11 @@
 <launch>
 <node pkg="airsim-ros" type="airsim_control" name="airsim_control" output="screen">
-<param name="kp" value="0.12"/>
-<param name="ki" value="0.0018"/>
+<param name="kp" value="0.15"/>
+<param name="ki" value="0.0010"/>
 <param name="kd" value="1.5"/>
 <param name="max" value="5"/>
-<param name="kp2" value="0.08"/>
-<param name="ki2" value="0.0003"/>
+<param name="kp2" value="0.05"/>
+<param name="ki2" value="0.0007"/>
 <param name="kd2" value="1.5"/>
 <param name="max2" value="5"/>
 </node>

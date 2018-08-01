@@ -230,7 +230,7 @@ ${catkin_LIBRARIES}
 )
 
 add_executable(airsim_control
- src/airsim_control.cpp
+ src/airsim_control2.cpp
  ${SOURCEFILES}
 )
 
