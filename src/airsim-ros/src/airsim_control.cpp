@@ -508,9 +508,9 @@ void AirsimControl::run()
                     else
                     {
 
-                        if (target_height < 22)
+                        if (target_height < 60)
                             target_height = target_height + 0.05;
-                        if (target_height > 22){
+                        if (target_height > 60){
                             target_height=initial_height+6;
                         }
                             

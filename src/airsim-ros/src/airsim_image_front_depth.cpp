@@ -30,6 +30,7 @@ void getImageFrontRgbData(cv_bridge::CvImage& msg_front_depth)
     msg_front_depth.header.frame_id = "image";
     msg_front_depth.image = img_front_depth;
     msg_front_depth.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
+    
 }
 
 int main(int argc, char** argv) {
