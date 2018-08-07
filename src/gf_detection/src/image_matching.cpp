@@ -21,7 +21,7 @@ ImageMatching::ImageMatching() : it_(nh_)
 void ImageMatching::camposeCallback(const std_msgs::Int16::ConstPtr& msg)
 {
   campose=msg->data;
-
+  
 }
 void ImageMatching::imageCb(const sensor_msgs::ImageConstPtr &msg)
 {
@@ -117,13 +117,13 @@ void ImageMatching::digitSquares(IplImage *img, int minarea, int maxarea, gf_per
           CvPoint *pt3 = (CvPoint *)cvGetSeqElem(result, 3);
 
 
-                if(getx(pt2)<getx(pt0))
-                {
-                  pt0=(CvPoint*)cvGetSeqElem( result, 1 );
-                  pt1=(CvPoint*)cvGetSeqElem( result, 2 );
-                  pt2=(CvPoint*)cvGetSeqElem( result, 3 );
-                  pt3=(CvPoint*)cvGetSeqElem( result, 0 );
-                }
+          if(getx(pt2)<getx(pt0))
+          {
+            pt0=(CvPoint*)cvGetSeqElem( result, 1 );
+            pt1=(CvPoint*)cvGetSeqElem( result, 2 );
+            pt2=(CvPoint*)cvGetSeqElem( result, 3 );
+            pt3=(CvPoint*)cvGetSeqElem( result, 0 );
+          }
 
           if (judgerect(pt0, pt1, pt2, pt3) == 1)
           {
@@ -345,7 +345,7 @@ int ImageMatching::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, CvPoi
   int serieNum = -1;
   std::string resource_dir=ros::package::getPath("gf_detection");
   cout<<"############   "<<resource_dir<<endl;
-  for (int h = 0; h <= 10; h++)
+  for (int h = 4; h <= 9; h++)
   {
     char name[128];
     sprintf(name, "%s/resource/%d.jpg",resource_dir.c_str(), h);

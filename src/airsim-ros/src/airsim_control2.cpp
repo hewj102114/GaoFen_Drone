@@ -17,6 +17,7 @@ AirsimControl::AirsimControl()
     sub_object_circle = nh.subscribe("airsim/depth/circle", 1, &AirsimControl::cb_object_circle, this);
     sub_err = nh.subscribe("airsim/depth/error", 1, &AirsimControl::cb_err, this);
     pub_front_camera_pose = nh.advertise<std_msgs::Int16>("airsim/front_camera/pose_state", 1);
+    pub_height_filter = nh.advertise<geometry_msgs::Vector3Stamped>("airsim/height_filter", 1);
     detect_num = -1;
     memset(target_mode, 0, sizeof(int) * 11);
     memset(target_mode_count, 0, sizeof(int) * 11 * 2);
@@ -24,6 +25,10 @@ AirsimControl::AirsimControl()
     control_client = new msr::airlib::MultirotorRpcLibClient("192.168.1.100");
     control_client->confirmConnection();
     error_code = 0;
+
+    running_count = 0;
+    leftright_count = 0;
+    forward_count = 0;
 }
 
 void AirsimControl::cb_imu(const sensor_msgs::Imu &msg)
@@ -44,6 +49,7 @@ void AirsimControl::cb_barometer(const geometry_msgs::Vector3Stamped &msg)
 }
 void AirsimControl::cb_err(const std_msgs::Int16 &msg)
 {
+    pre_error_code = error_code;
     error_code = msg.data;
 }
 void AirsimControl::cb_object_front(const gf_perception::ObjectList &msg)
@@ -152,6 +158,19 @@ float find_max(float a[], size_t len)
 }
 ////////////////////////////////////////////
 
+//一阶滞后滤波
+////////////////////////////////////////////
+#define one_a 0.8
+
+float last_filter_value = 0;
+float this_time_value = 0;
+float one_filter_back(float new_value, float last_filter_value)
+{
+    return one_a * last_filter_value + (1 - one_a) * new_value;
+}
+
+////////////////////////////////////////////
+
 void AirsimControl::run()
 {
     int detect_state = 0; //0-寻找,1-下视RGB检测 2-RGB图像检测,3-RGB+深度图像检测,4-圆圈检测，5-穿越/降落
@@ -159,7 +178,7 @@ void AirsimControl::run()
     target_mode[0] = 2;
     target_mode[1] = 2;
     target_mode[2] = 2;
-    target_mode[3] = 2;
+    target_mode[3] = 0;
     target_mode[4] = 0;
     target_mode[5] = 0;
     target_mode[10] = 2;
@@ -175,9 +194,9 @@ void AirsimControl::run()
     pid_height.init(kp, ki, kd, pid_max); //0.12, 0.0018, 1.5, 5
     double target_height = 15;
     PIDctrl pid_pitch;
-    pid_pitch.init(0.0002, 0, 0.008, 0.05);
+    pid_pitch.init(0.0002, 0, 0.008, 0.04);
     PIDctrl pid_roll;
-    pid_roll.init(0.0002, 0, 0.008, 0.05);
+    pid_roll.init(0.0002, 0, 0.008, 0.045);
     PIDctrl pid_yaw;
     pid_yaw.init(1, 0, 0, 1);
     double target_yaw;
@@ -216,7 +235,7 @@ void AirsimControl::run()
     // int xiafei_cnt = 0 , stop_cnt_flag = 0;
 
     target_height = msg_barometer.vector.x;
-    double initial_yaw = tf::getYaw(msg_imu.orientation);
+    initial_yaw = tf::getYaw(msg_imu.orientation);
     target_yaw = initial_yaw;
 
     ros::NodeHandle private_nh("~");
@@ -236,7 +255,7 @@ void AirsimControl::run()
         pid_height.init(kp2, ki2, kd2, pid_max2);
         ///////////////////////////////////////////
 
-        ROS_ERROR("Detect Num: %d  Mode: %d State: %d", detect_num, target_mode[detect_num], detect_state);
+        // ROS_ERROR("Detect Num: %d  Mode: %d State: %d", detect_num, target_mode[detect_num], detect_state);
         control_roll = 0;
         control_pitch = 0;
         control_yaw = 0;
@@ -246,13 +265,23 @@ void AirsimControl::run()
         if (detect_num > 0 && detect_num < 11)
         {
             //板子未知类型 探索
+
             if (target_mode[detect_num] == 0)
             {
                 //寻找
-                target_height = initial_height + 5;
+                ROS_ERROR("Detect : %d  Target Unknown  & Search", detect_num);
+
+                target_height = initial_height + 3;
                 if (down_search_mode == 0)
                 {
-                    ;
+
+                    if (go_forward(control_pitch, control_roll, target_yaw))
+                        down_search_mode = 1;
+                }
+
+                if (down_search_mode == 1)
+                {
+                    search(control_pitch, control_roll, target_yaw);
                 }
             }
             //障碍圈
@@ -481,10 +510,12 @@ void AirsimControl::run()
                 //寻找目标
                 if (detect_state == 0)
                 {
+                    ROS_ERROR("Detect : %d  Target Down  & Search", detect_num);
+
                     target_height = 18;
                     if (object_down.number == detect_num)
                     {
-                        count_detect_down_cam += 5;
+                        count_detect_down_cam++;
                         lost_detect_down_cam = 0;
                     }
                     else
@@ -494,123 +525,146 @@ void AirsimControl::run()
                             count_detect_down_cam = 0;
                         lost_detect_down_cam++;
                     }
-                    ROS_INFO("Finding  target  height %d  %d %d", count_detect_down_cam, lost_detect_down_cam,down_search_mode);
 
-                    if (count_detect_down_cam > 20){
-                        target_yaw = initial_yaw;
+                    ROS_INFO("Finding  target  height %d  %d %d", count_detect_down_cam, lost_detect_down_cam, down_search_mode);
+                    if (count_detect_down_cam > 8 && down_search_mode != 2 && down_search_mode != 0)
+                    {
+                        if (abs(object_down.center.x - 320) < 280 && abs(object_down.center.y - 240) < 200)
+                        {
+                            down_search_mode = 2;
+                            go_through_count = 0;
+                        }
                     }
-                    if (count_detect_down_cam > 0  && down_search_mode)
+
+                    if (down_search_mode == 0)
                     {
                         target_yaw = initial_yaw;
-
                         if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.1)
                         {
-                            detect_state = 1;
-                            count_detect_down_cam = 0;
-                            down_search_mode = 0;
+                            go_through_count++;
+                            ROS_INFO(" ###########33  %d", go_through_count);
+                            if (go_through_count < 80)
+                            {
+                                control_pitch = -0.05;
+                            }
+                            else if (go_through_count < 280 && go_through_count > 250)
+                            {
+                                control_pitch = 0.15;
+                            }
+                            else if (go_through_count > 280)
+                            {
+                                control_client->hover();
+                                sleep(2);
+                                go_through_count = 0;
+                                down_search_mode = 1;
+                                count_detect_down_cam = 0;
+                            }
+                        }
+                    }
+                    if (down_search_mode == -1)
+                    {
+                        target_yaw = initial_yaw + 1.571;
+                        go_through_count++;
+                        if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.02)
+                        {
+                            if (go_through_count < 180)
+                            {
+                                control_pitch = -0.05;
+                            }
+                            else
+                            {
+                                control_pitch = 0;
+                            }
+                            if (error_code < 220 && error_code < pre_error_code)
+                            {
+                                control_pitch = 0.15;
+                            }
+                            if (error_code < 220 && error_code > pre_error_code)
+                            {
+                                down_search_mode = 1;
+                                go_through_count = 0;
+                            }
+                        }
+                    }
+                    if (down_search_mode == 1)
+                    {
+                        target_yaw = initial_yaw - 1.571;
+                        go_through_count++;
+                        if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.02)
+                        {
+
+                            if (go_through_count < 180)
+                            {
+                                control_pitch = -0.05;
+                            }
+                            else
+                            {
+                                control_pitch = 0;
+                            }
+                            if (error_code < 220 && error_code < pre_error_code)
+                            {
+                                control_pitch = 0.15;
+                            }
+                            if (error_code < 220 && error_code > pre_error_code)
+                            {
+                                down_search_mode = -1;
+                                go_through_count = 0;
+                            }
+                        }
+                    }
+
+                    if (down_search_mode == 2)
+                    {
+                        go_through_count++;
+                        if (go_through_count < 30)
+                        {
+                            control_pitch = 0.10;
+                            ROS_ERROR("FFFFF  %d", go_through_count);
                         }
                         else
                         {
-                            control_pitch = 0.02;
-                        }
-                    }
-                    else if (count_detect_down_cam > 20 && down_search_mode == 0)
-                    {
-                        detect_state = 1;
-                        count_detect_down_cam = 0;
-                        down_search_mode = 0;
-                    }
-                    else
-                    {
-
-                        ROS_ERROR("Search %d", down_search_mode);
-                        if (down_search_mode == 0)
-                        {
-                            target_yaw = initial_yaw;
-
-                            if (18 - msg_barometer.vector.x > 1)
-                                control_pitch = -0.02;
-                            if (18 - msg_barometer.vector.x < 1)
-                                control_pitch = 0.02;
-                            if (abs(msg_barometer.vector.x - 18) < 0.2)
+                            ROS_ERROR("FFFFF  %d", go_through_count);
+                            if (count_detect_down_cam > 5)
                             {
-                                down_search_mode = 2;
+                                detect_state = 1;
+                                count_detect_down_cam = 0;
+                                down_search_mode = 0;
+                                go_through_count = 0;
+                            }
+                            if (lost_detect_down_cam > 10)
+                            {
+                                target_height += 0.01;
                             }
                         }
-                        else if (down_search_mode == 1) //左
-                        {
-                            target_yaw = initial_yaw + 1.57;
-                            if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.1)
-                            {
-                                control_pitch = -0.01;
-                                if (error_code < 220)
-                                {
-                                    control_pitch = 0.01;
-                                }
-                                if (error_code < 150)
-                                {
-                                    down_search_mode = 2;
-                                }
-                            }
-
-                            
-                        }
-                        else if (down_search_mode == 2) //右
-                        {
-                            target_yaw = initial_yaw - 1.57;
-                            if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.1)
-                            {
-                                control_pitch = -0.01;
-                                if (error_code < 220)
-                                {
-                                    control_pitch = 0.01;
-                                }
-                                if (error_code < 150)
-                                {
-                                    down_search_mode = 1;
-                                }
-                            }
-
-                            
-                        }
-                    }
-                    if (down_search_mode==1){
-                        front_cam_pose_msg.data=2;
-                    }
-                    else if(down_search_mode==2){
-                        front_cam_pose_msg.data=1;
                     }
                 }
                 //下视检测
                 else if (detect_state == 1)
                 {
-                    ROS_INFO("Down Cam %d targetnum %d (%f,%f)", object_down.number, detect_num, object_down.center.x, object_down.center.y);
+                    ROS_ERROR("Detect : %d  Target Down  & Detect  ( %f,%f)", detect_num, object_down.center.x, object_down.center.y);
                     if (object_down.number == detect_num)
                     {
                         lost_detect_down_cam = 0;
-                        control_roll = pid_roll.calc((object_down.center.x - 325.0) * (msg_barometer.vector.x - initial_height) / 268.3 * 100);
-                        control_pitch = pid_pitch.calc((object_down.center.y * 1.0 - 240.0) * (msg_barometer.vector.x - initial_height) / 268.3 * 100);
+                        double drx = (object_down.center.x - 325.0) * (msg_barometer.vector.x - initial_height) / 268.3 * 100;
+                        double dry = (object_down.center.y * 1.0 - 240.0) * (msg_barometer.vector.x - initial_height) / 268.3 * 100;
+                        control_roll = pid_roll.calc(drx);
+                        control_pitch = pid_pitch.calc(dry);
                         ROS_INFO("R %f, P%f, Size %f", object_down.center.x - 320.0, object_down.center.y - 240.0, object_down.size.x * object_down.size.y);
-                        double dx = abs(object_down.center.x - 350);
+                        ROS_INFO("DX  %f  DY %f", drx, dry);
+
+                        double dx = abs(object_down.center.x - 320);
                         double dy = abs(object_down.center.y - 240);
 
-                        if (dx < 10)
-                            control_roll = 0;
-                        if (dy < 10)
-                            control_pitch = 0;
-                        if ((object_down.size.x * object_down.size.y) < 20000 && dy < 80 && dx < 100)
+                        // if (dx < 20)
+                        //     control_roll = 0;
+                        // if (dy < 20)
+                        //     control_pitch = 0;
+
+                        if (dy < 70 && dx < 80 && target_height > 16)
                         {
-                            target_height = target_height - 0.04;
+                            target_height = target_height - 0.015;
                         }
-                        else if ((object_down.size.x * object_down.size.y) < 30000 && dy < 80 && dx < 100)
-                        {
-                            target_height = target_height - 0.02;
-                        }
-                        else if ((object_down.size.x * object_down.size.y) > 40000)
-                        {
-                            target_height = target_height + 0.02;
-                        }
-                        if (dy < 30 && dx < 30 && (object_down.size.x * object_down.size.y) > 30000)
+                        if (dy < 30 && dx < 30 && target_height < 17)
                         {
                             count_center_down_cam++;
                         }
@@ -618,7 +672,7 @@ void AirsimControl::run()
                         {
                             count_center_down_cam = 0;
                         }
-                        if (count_center_down_cam > 3)
+                        if (count_center_down_cam > 6)
                         {
                             detect_state = 5;
                             count_center_down_cam = 0;
@@ -626,7 +680,12 @@ void AirsimControl::run()
                     }
                     else
                     {
-                        target_height = target_height + 0.05;
+                        target_height = target_height + 0.02;
+                        if (target_height > 21)
+                        {
+                            target_height = 21;
+                            control_pitch = -0.005;
+                        }
                         lost_detect_down_cam++;
                         if (lost_detect_down_cam > 100)
                         {
@@ -636,6 +695,7 @@ void AirsimControl::run()
                 }
                 else if (detect_state == 5)
                 {
+
                     ROS_INFO("LAND");
                     land();
                     ROS_INFO("LANd Finish");
@@ -658,6 +718,19 @@ void AirsimControl::run()
                 else
                 {
                     detect_state = 0;
+                }
+
+                if (tf::getYaw(msg_imu.orientation) < initial_yaw + 0.8 && tf::getYaw(msg_imu.orientation) > initial_yaw - 0.8)
+                {
+                    front_cam_pose_msg.data = 0;
+                }
+                else if (tf::getYaw(msg_imu.orientation) > initial_yaw + 0.8)
+                {
+                    front_cam_pose_msg.data = 2;
+                }
+                else
+                {
+                    front_cam_pose_msg.data = 1;
                 }
             }
         }
@@ -682,15 +755,22 @@ void AirsimControl::run()
         }
 
         //filter:
+        // for (int i = 0; i < filter_N - 1; i++)
+        // {
+        //     filter_seq_height[i] = filter_seq_height[i + 1];
+        // }
 
-        for (int i = 0; i < filter_N - 1; i++)
-        {
-            filter_seq_height[i] = filter_seq_height[i + 1];
-        }
+        // filter_seq_height[filter_N - 1] = msg_barometer.vector.x;
 
-        filter_seq_height[filter_N - 1] = msg_barometer.vector.x;
+        // filtered_height = (sum(filter_seq_height, filter_N) - find_max(filter_seq_height, filter_N) - find_min(filter_seq_height, filter_N)) / (filter_N - 2);
 
-        filtered_height = (sum(filter_seq_height, filter_N) - find_max(filter_seq_height, filter_N) - find_min(filter_seq_height, filter_N)) / (filter_N - 2);
+        filtered_height = one_filter_back(msg_barometer.vector.x, filtered_height);
+        geometry_msgs::Vector3Stamped msg_h;
+        msg_h.header.stamp = ros::Time::now();
+        msg_h.vector.x = filtered_height;
+        msg_h.vector.y = current_yaw;
+        msg_h.vector.z = target_height;
+        pub_height_filter.publish(msg_h);
 
         ////////////////////////////
 
@@ -730,7 +810,7 @@ bool AirsimControl::takeoff(PIDctrl *pid)
     int count = 0;
     while (1)
     {
-        double d_height = initial_height + 5 - msg_barometer.vector.x;
+        double d_height = initial_height + 8 - msg_barometer.vector.x;
         double d_throttle = pid->calc(d_height);
         move(0, 0, d_throttle, 0, 5);
         if (abs(d_height) < 0.2)
@@ -738,7 +818,7 @@ bool AirsimControl::takeoff(PIDctrl *pid)
         // count++;
         else
             count = 0;
-        usleep(10000);
+        usleep(33000);
         ros::spinOnce();
     }
     control_client->hover();
@@ -834,6 +914,72 @@ bool AirsimControl::move(float pitch, float roll, float throttle, float yaw,
     control_client->moveByAngleThrottle(pitch, roll, throttle, yaw, duration); //ROS_INFO("Command : Move Pitch-%f Roll-%f Throtele-%f Yaw-%f Dur%f",pitch, roll, throttle, yaw,duration);
 }
 
+void AirsimControl::search(double &pitch, double &roll, double &yaw)
+{
+    if (leftright_count > 0) //右
+    {
+        yaw = initial_yaw - 3.1415 / 4;
+        leftright_count++;
+    }
+    else //左
+    {
+        yaw = initial_yaw + 3.1415 / 4;
+        leftright_count--;
+    }
+
+    if (abs(tf::getYaw(msg_imu.orientation) - yaw) < 0.02)
+    {
+
+        if (leftright_count < 180)
+        {
+            pitch = -0.05;
+            roll = (leftright_count > 0) ? 0.05 : -0.05;
+        }
+        else
+        {
+
+            pitch = 0.0;
+            roll = 0.0;
+        }
+
+        if (error_code < 230 && error_code < pre_error_code)
+        {
+            pitch = 0.15;
+            roll = (leftright_count > 0) ? -0.15 : 0.15;
+        }
+        if (error_code < 230 && error_code > pre_error_code)
+        {
+            leftright_count = (leftright_count > 0) ? -1 : 1;
+        }
+    }
+}
+
+bool AirsimControl::go_forward(double &pitch, double &roll, double &yaw)
+{
+    if (abs(tf::getYaw(msg_imu.orientation) - yaw) < 0.02)
+    {
+        forward_count++;
+        if (forward_count < 80)
+        {
+            pitch = -0.05;
+        }
+        else if (forward_count > 80 && forward_count < 200){
+            pitch = 0.0;
+        }
+        else if (forward_count > 200 && forward_count < 240)
+        {
+            pitch = 0.15;
+        }
+        else{
+            control_client->hover();
+            sleep(2);
+            forward_count=0;
+            return 1;
+        }
+    }
+    ROS_ERROR("##############33");
+    return 0;
+}
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "airsim_control");

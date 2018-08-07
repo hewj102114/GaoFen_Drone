@@ -168,7 +168,7 @@ void AirsimControl::run()
     target_yaw = initial_yaw;
     while (ros::ok())
     {
-        ROS_ERROR("Detect Num: %d  Mode: %d State: %d", detect_num, target_mode[detect_num], detect_state);
+        // ROS_ERROR("Detect Num: %d  Mode: %d State: %d", detect_num, target_mode[detect_num], detect_state);
         control_roll = 0;
         control_pitch = 0;
         control_yaw = 0;
@@ -180,7 +180,7 @@ void AirsimControl::run()
             if (target_mode[detect_num] == 0)
             {
                 //寻找
-
+                ROS_ERROR("Detect : %d  Target Unknown  & Search",detect_num);
                 if (detect_state == 0)
                 {
                     if (object_front.number != detect_num)
@@ -489,6 +489,7 @@ void AirsimControl::run()
                 //寻找目标
                 if (detect_state == 0)
                 {
+                    ROS_ERROR("Detect : %d  Target Down  & Search",detect_num);
                     ROS_INFO("Finding  target height %f", target_height);
                     if (object_down.number == detect_num)
                     {
@@ -519,7 +520,7 @@ void AirsimControl::run()
                 //下视检测
                 else if (detect_state == 1)
                 {
-                    ROS_INFO("Down Cam %d targetnum %d (%f,%f)", object_down.number, detect_num, object_down.center.x, object_down.center.y);
+                    ROS_ERROR("Detect : %d  Target Down  & Detect  ( %f,%f)",detect_num,object_down.center.x, object_down.center.y);
                     if (object_down.number == detect_num)
                     {
                         lost_detect_down_cam = 0;

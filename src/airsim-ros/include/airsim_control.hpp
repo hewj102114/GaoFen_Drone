@@ -29,6 +29,7 @@ class AirsimControl{
     ros::Subscriber sub_err;
 
     ros::Publisher pub_front_camera_pose;
+    ros::Publisher pub_height_filter;
 
     void cb_imu(const sensor_msgs::Imu& msg);
     void cb_gps(const sensor_msgs::NavSatFix& msg);
@@ -50,7 +51,7 @@ class AirsimControl{
     gf_perception::ObjectList msg_objects_down;
     gf_perception::Object object_front;
     gf_perception::Object object_down;
-    int error_code;
+    int error_code,pre_error_code;
     
     void run();
     int target_mode_count[11][2];
@@ -67,5 +68,10 @@ class AirsimControl{
     bool move(float pitch,float roll,float throttle,float yaw,float duration);
     void gostraight();
 
+    int running_count,leftright_count,forward_count;
+    float initial_yaw;
+
+    void search(double& pitch,double& roll,double& yaw);
+    bool go_forward(double& pitch,double& roll,double& yaw);
 
 };
