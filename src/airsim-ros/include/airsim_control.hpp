@@ -26,7 +26,7 @@ class AirsimControl{
     ros::Subscriber sub_object_front;
     ros::Subscriber sub_object_down;
     ros::Subscriber sub_object_circle;
-    ros::Subscriber sub_err;
+    ros::Subscriber sub_depth_count;
 
     ros::Publisher pub_front_camera_pose;
     ros::Publisher pub_height_filter;
@@ -38,7 +38,7 @@ class AirsimControl{
     void cb_object_front(const gf_perception::ObjectList& msg);
     void cb_object_down(const gf_perception::ObjectList& msg);
     void cb_object_circle(const geometry_msgs::Vector3Stamped& msg);
-    void cb_err(const std_msgs::Int16& msg);
+    void cb_depth_count(const geometry_msgs::Vector3Stamped& msg);
     
 
     
@@ -47,6 +47,8 @@ class AirsimControl{
     sensor_msgs::MagneticField msg_magnetic;
     geometry_msgs::Vector3Stamped msg_barometer;
     geometry_msgs::Vector3Stamped msg_circle;
+    geometry_msgs::Vector3Stamped msg_depth_count;
+    geometry_msgs::Vector3Stamped msg_pre_depth_count;
     gf_perception::ObjectList msg_objects_front;
     gf_perception::ObjectList msg_objects_down;
     gf_perception::Object object_front;
@@ -69,6 +71,7 @@ class AirsimControl{
     void gostraight();
 
     int running_count,leftright_count,forward_count;
+    int search_flag;
     float initial_yaw;
 
     void search(double& pitch,double& roll,double& yaw);

@@ -7,5 +7,5 @@
 <node pkg="airsim-ros" type="airsim_magnetic" name="airsim_magnetic" output="screen"/>
 
 <node pkg="airsim-ros" type="airsim_barometer" name="airsim_barometer" output="screen"/>
-
+<include file="$(find imu_filter_madgwick)/launch/madgwick.launch"/>
 </launch>

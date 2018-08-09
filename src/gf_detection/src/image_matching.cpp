@@ -345,7 +345,7 @@ int ImageMatching::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, CvPoi
   int serieNum = -1;
   std::string resource_dir=ros::package::getPath("gf_detection");
   cout<<"############   "<<resource_dir<<endl;
-  for (int h = 4; h <= 9; h++)
+  for (int h = 0; h <= 10; h++)
   {
     char name[128];
     sprintf(name, "%s/resource/%d.jpg",resource_dir.c_str(), h);

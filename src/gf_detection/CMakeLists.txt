@@ -135,3 +135,13 @@ target_link_libraries(down
     ${OpenCV_LIBS}
  )
 
+add_executable(depth
+src/image_depth2.cpp
+    # ${SOURCEFILES}
+)
+
+
+target_link_libraries(depth
+   ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+ )

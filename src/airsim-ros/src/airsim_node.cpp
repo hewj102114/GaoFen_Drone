@@ -10,8 +10,9 @@ using namespace std;
 
 #define DATA_FREQ 100000
 #define CALC_TIME_START ros::Time start = ros::Time::now();
-#define CALC_TIME_END ROS_INFO("TIME : %f FPS: %f", (ros::Time::now() - start).toSec(), 1.0 / (ros::Time::now() - start).toSec()); \
- start = ros::Time::now();
+#define CALC_TIME_END                                                                                            \
+    ROS_INFO("TIME : %f FPS: %f", (ros::Time::now() - start).toSec(), 1.0 / (ros::Time::now() - start).toSec()); \
+    start = ros::Time::now();
 
 AirsimNode::AirsimNode(ros::NodeHandle *_pnh, const std::string &_ip)
 {
@@ -28,8 +29,7 @@ AirsimNode::AirsimNode(ros::NodeHandle *_pnh, const std::string &_ip)
     pub_image_front_depth = it.advertiseCamera("airsim/image/front/depth", 1);
     pub_image_down_rgb = it.advertise("airsim/image/down/rgb", 1);
 
-    sub=nh.subscribe("airsim/object/down", 100, &AirsimNode::callb,this);
-
+    sub = nh.subscribe("airsim/object/down", 100, &AirsimNode::callb, this);
 
     ip_adress = _ip;
     control_client = new msr::airlib::MultirotorRpcLibClient(_ip);
@@ -263,10 +263,10 @@ bool AirsimNode::takeoff()
         move(0, 0, d_throttle, 0, 5);
         if (abs(d_height) < 0.1)
             break;
-           // count++;
+        // count++;
         else
             count = 0;
-        cout << d_height<<"   "<<count << endl;
+        cout << d_height << "   " << count << endl;
         usleep(10000);
     }
     control_client->hover();
@@ -276,35 +276,35 @@ bool AirsimNode::land()
 {
     PIDctrl pid_height;
     pid_height.init(0.06, 0.0003, 1.5, 5);
-    double land_target_altitude =  0;
+    double land_target_altitude = 0;
     int highest_altitude = 25;
-    int get_to_highest_altitude_flag = 0 , start_land_flag = 0;
+    int get_to_highest_altitude_flag = 0, start_land_flag = 0;
 
-    double  last_altitude = 0;
+    double last_altitude = 0;
     int land_complete_cnt = 0;
     while (1)
     {
         //上升中：
-        if(get_to_highest_altitude_flag == 0)
+        if (get_to_highest_altitude_flag == 0)
         {
             land_target_altitude = highest_altitude;
         }
-        if(get_to_highest_altitude_flag == 0 && barometer_data.vector.x > highest_altitude - 0.5)
+        if (get_to_highest_altitude_flag == 0 && barometer_data.vector.x > highest_altitude - 0.5)
         {
             get_to_highest_altitude_flag = 1;
             start_land_flag = 1;
         }
         //下降中：
-        if(start_land_flag == 1)
+        if (start_land_flag == 1)
         {
             land_target_altitude -= 0.03;
         }
         //降落完成：
         land_complete_cnt++;
-        if(land_complete_cnt >= 300)
+        if (land_complete_cnt >= 300)
         {
             //如果3秒前后高度差大于1,则判断仍在下降
-            if(abs(barometer_data.vector.x - last_altitude) > 0.8)
+            if (abs(barometer_data.vector.x - last_altitude) > 0.8)
             {
                 land_complete_cnt = 0;
                 last_altitude = barometer_data.vector.x;
@@ -314,13 +314,13 @@ bool AirsimNode::land()
             {
                 break;
             }
-        }       
+        }
         //PID部分
         double d_height = land_target_altitude - barometer_data.vector.x;
         double d_throttle = pid_height.calc(d_height);
         move(0, 0, d_throttle, 0, 5);
 
-        cout  << "   target_altitude:" << land_target_altitude << "real_altitude :" << barometer_data.vector.x << endl;
+        cout << "   target_altitude:" << land_target_altitude << "real_altitude :" << barometer_data.vector.x << endl;
         usleep(10000);
     }
     ROS_INFO("Land complete ");
@@ -345,7 +345,7 @@ bool AirsimNode::move(float pitch, float roll, float throttle, float yaw,
     }
     control_client->moveByAngleThrottle(pitch, roll, throttle, yaw, duration); //ROS_INFO("Command : Move Pitch-%f Roll-%f Throtele-%f Yaw-%f Dur%f",pitch, roll, throttle, yaw,duration);
 }
-bool AirsimNode::hover() { ; }
+bool AirsimNode::hover() { control_client->hover(); }
 
 void AirsimNode::createThread(int n)
 {
@@ -407,7 +407,7 @@ void AirsimNode::createThread(int n)
 void AirsimNode::run()
 {
     RUNNING_FLAG = 1;
-    int thread_num[] = {0,1,2,3,4,5,6};
+    int thread_num[] = {0, 1, 2, 3, 4, 5, 6};
     int N = sizeof(thread_num) / sizeof(int);
     std::thread t[N];
 
@@ -426,6 +426,7 @@ void AirsimNode::run()
 
     ROS_INFO("All Thread Create & Exit Airsim Run Function");
 }
- void AirsimNode::callb(const gf_perception::ObjectList& msg){
-     ROS_INFO("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
- }
+void AirsimNode::callb(const gf_perception::ObjectList &msg)
+{
+    ROS_INFO("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+}
