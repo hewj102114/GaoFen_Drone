@@ -20,9 +20,9 @@ class ImageConverter
   image_transport::Subscriber depth_sub_;
   image_transport::Publisher image_pub_;
 
-  ros::Publisher pub_depth_count;
+  ros::Publisher pub_depth_count,pub_depth_count_full;
   ros::Publisher pub_circle;
-  Mat mask_down,mask_left,mask_right;
+  Mat mask_down,mask_left,mask_right,mask_up;
 
 public:
   ImageConverter()
@@ -32,6 +32,8 @@ public:
     depth_sub_ = it_.subscribe("/airsim/image/front/depth", 1,
                                &ImageConverter::imageDepth, this);
     pub_depth_count = nh_.advertise<geometry_msgs::Vector3Stamped>("/airsim/depth/count", 1);
+    pub_depth_count_full = nh_.advertise<geometry_msgs::Vector3Stamped>("/airsim/depth/count_full", 1);
+    
     pub_circle = nh_.advertise<geometry_msgs::Vector3Stamped>("/airsim/depth/circle", 1);
     std::string resource_dir=ros::package::getPath("gf_detection");
     char name[128];
@@ -41,6 +43,7 @@ public:
     mask_left=imread(name,0);
         sprintf(name, "%s/resource/mask_right.png",resource_dir.c_str());
     mask_right=imread(name,0);
+    threshold(mask_down,mask_up,100,255,CV_THRESH_BINARY_INV);
     // namedWindow("depth");
     // namedWindow("depth1");
   }
@@ -182,19 +185,27 @@ public:
     }
     pub_circle.publish(circle_msg);
 
-    Mat left,right,down;
+    Mat left,right,down,up;
     int len=100;
     imshow("aa",mask_left);
     bitwise_and(Gray,mask_left,left);
     bitwise_and(Gray,mask_right,right);
     bitwise_and(Gray,mask_down,down);
-    geometry_msgs::Vector3Stamped count_msg;
+    bitwise_and(Gray,mask_up,up);
+  
+  
+    geometry_msgs::Vector3Stamped count_msg,count_full_msg;
     count_msg.header.stamp = ros::Time::now();
+    count_full_msg.header.stamp = ros::Time::now();
+    Mat gray_th;
+    threshold(Gray,gray_th,100,255,CV_THRESH_BINARY);
     count_msg.vector.x= countNonZero(left)*1.0/(countNonZero(mask_left));
     count_msg.vector.y= countNonZero(right)*1.0/(countNonZero(mask_right));
     count_msg.vector.z= countNonZero(down)*1.0/(countNonZero(mask_down));
+    count_full_msg.vector.x= countNonZero(up)*1.0/(countNonZero(mask_up));
     pub_depth_count.publish(count_msg);
-    // imshow("depth1", left);
+    pub_depth_count_full.publish(count_full_msg);
+    imshow("depth1", up);
     waitKey(5);
   }
 };

@@ -145,3 +145,16 @@ target_link_libraries(depth
    ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
  )
+
+
+
+add_executable(front
+src/image_matching_front.cpp
+    # ${SOURCEFILES}
+)
+
+
+target_link_libraries(front
+   ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+ )

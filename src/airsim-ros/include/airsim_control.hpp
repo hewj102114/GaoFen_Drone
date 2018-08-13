@@ -26,7 +26,7 @@ class AirsimControl{
     ros::Subscriber sub_object_front;
     ros::Subscriber sub_object_down;
     ros::Subscriber sub_object_circle;
-    ros::Subscriber sub_depth_count;
+    ros::Subscriber sub_depth_count,sub_depth_count_full;
 
     ros::Publisher pub_front_camera_pose;
     ros::Publisher pub_height_filter;
@@ -39,6 +39,7 @@ class AirsimControl{
     void cb_object_down(const gf_perception::ObjectList& msg);
     void cb_object_circle(const geometry_msgs::Vector3Stamped& msg);
     void cb_depth_count(const geometry_msgs::Vector3Stamped& msg);
+    void cb_depth_count_full(const geometry_msgs::Vector3Stamped& msg);
     
 
     
@@ -47,8 +48,8 @@ class AirsimControl{
     sensor_msgs::MagneticField msg_magnetic;
     geometry_msgs::Vector3Stamped msg_barometer;
     geometry_msgs::Vector3Stamped msg_circle;
-    geometry_msgs::Vector3Stamped msg_depth_count;
-    geometry_msgs::Vector3Stamped msg_pre_depth_count;
+    geometry_msgs::Vector3Stamped msg_depth_count,msg_depth_count_full;
+    geometry_msgs::Vector3Stamped msg_pre_depth_count,msg_pre_depth_count_full;
     gf_perception::ObjectList msg_objects_front;
     gf_perception::ObjectList msg_objects_down;
     gf_perception::Object object_front;
