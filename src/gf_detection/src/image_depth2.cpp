@@ -107,12 +107,13 @@ public:
       }
     }
 
+
     // Mat thres;
     // threshold(Gray, thres, 0, 255, CV_THRESH_OTSU);
 
     Mat edge;
     Canny(Gray, edge, 100, 300, 3);
-    // imshow("gg", Gray);
+    // imshow("gg", edge);
 
     // imshow("depth", edge);
     waitKey(5);
@@ -120,7 +121,7 @@ public:
     //寻找最外层轮廓
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
-    findContours(edge, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE, Point());
+    findContours(edge, contours, hierarchy, CV_RETR_LIST, CHAIN_APPROX_NONE, Point());
 
     float p0x, p0y, p1x, p1y, p2x, p2y;
     float l1, l2, l12;
@@ -128,6 +129,8 @@ public:
     float l1t;
     Point2f Pt[4];
     int n_circle = 0;
+
+    // cout<<contours.size()<<endl;
 
     for (int i = 0; i < contours.size(); i++)
     {
@@ -143,6 +146,11 @@ public:
       l1 = sqrt((p0x - p1x) * (p0x - p1x) + (p0y - p1y) * (p0y - p1y));
       l2 = sqrt((p2x - p1x) * (p2x - p1x) + (p2y - p1y) * (p2y - p1y));
       l12 = l1 / l2;
+
+      // for (int j = 0; j <= 3; j++)
+      // {
+      //   line(Gray, P[j], P[(j + 1) % 4], Scalar(255), 8);
+      // }
 
       if (fabs(l12 - 1) < 0.2 && l1 > 100 && l2 > 100)
       {
@@ -165,6 +173,7 @@ public:
         }
       }
     }
+    imshow("ggg", Gray);
     geometry_msgs::Vector3Stamped circle_msg;
     if (n_circle > 0)
     {
@@ -173,7 +182,7 @@ public:
       circle_msg.vector.x = cx;
       circle_msg.vector.y = cy;
       circle_msg.vector.z=sqrt(pow(Pt[0].x - Pt[2].x,2) +pow(Pt[0].y - Pt[2].y,2));
-      pub_circle.publish(circle_msg);
+      
       circle(Gray, Point2f(cx, cy), 2, Scalar(0));
 
       for (int j = 0; j <= 3; j++)
@@ -187,7 +196,7 @@ public:
 
     Mat left,right,down,up;
     int len=100;
-    imshow("aa",mask_left);
+    // imshow("aa",mask_left);
     bitwise_and(Gray,mask_left,left);
     bitwise_and(Gray,mask_right,right);
     bitwise_and(Gray,mask_down,down);
@@ -205,7 +214,7 @@ public:
     count_full_msg.vector.x= countNonZero(up)*1.0/(countNonZero(mask_up));
     pub_depth_count.publish(count_msg);
     pub_depth_count_full.publish(count_full_msg);
-    imshow("depth1", up);
+    // imshow("depth1", up);
     waitKey(5);
   }
 };

@@ -7,10 +7,11 @@ using namespace std;
 #define SHOW_IMAGE
 #define DATA_FREQ 100000
 #define CALC_TIME_START ros::Time start = ros::Time::now();
-#define CALC_TIME_END ROS_ERROR("TIME : %f FPS: %f", (ros::Time::now() - start).toSec(), 1.0 / (ros::Time::now() - start).toSec()); \
- start = ros::Time::now();
+#define CALC_TIME_END                                                                                           \
+  ROS_ERROR("TIME : %f FPS: %f", (ros::Time::now() - start).toSec(), 1.0 / (ros::Time::now() - start).toSec()); \
+  start = ros::Time::now();
 
-//  int NS=2742;
+int NS = 0;
 
 ImageMatchingFront::ImageMatchingFront() : it_(nh_)
 {
@@ -20,10 +21,9 @@ ImageMatchingFront::ImageMatchingFront() : it_(nh_)
   campose_sub = nh_.subscribe("airsim/front_camera/pose_state", 1, &ImageMatchingFront::camposeCallback, this);
 }
 
-void ImageMatchingFront::camposeCallback(const std_msgs::Int16::ConstPtr& msg)
+void ImageMatchingFront::camposeCallback(const std_msgs::Int16::ConstPtr &msg)
 {
-  campose=msg->data;
-  
+  campose = msg->data;
 }
 void ImageMatchingFront::imageCb(const sensor_msgs::ImageConstPtr &msg)
 {
@@ -41,28 +41,27 @@ void ImageMatchingFront::imageCb(const sensor_msgs::ImageConstPtr &msg)
 
   imageProcess(cv_ptr->image, object_list_msg);
 
-  
-  object_list_msg.header.stamp=ros::Time::now();
+  object_list_msg.header.stamp = ros::Time::now();
   object_pub.publish(object_list_msg);
 }
 
 void ImageMatchingFront::imageProcess(cv::Mat &imgRaw, gf_perception::ObjectList &rect_list)
 {
-  if(campose==0)
+  if (campose == 0)
   {
-   ;
+    ;
   }
-  else if(campose==1)
+  else if (campose == 1)
   {
-    Mat dst;  
-    transpose(imgRaw, dst); 
+    Mat dst;
+    transpose(imgRaw, dst);
     flip(dst, imgRaw, 1);
   }
-  else if(campose==2)
+  else if (campose == 2)
   {
-    Mat dst;  
+    Mat dst;
     transpose(imgRaw, dst);
-    flip(dst, imgRaw, 0); 
+    flip(dst, imgRaw, 0);
   }
 
   IplImage p = IplImage(imgRaw);
@@ -118,13 +117,12 @@ void ImageMatchingFront::digitSquares(IplImage *img, int minarea, int maxarea, g
           CvPoint *pt2 = (CvPoint *)cvGetSeqElem(result, 2);
           CvPoint *pt3 = (CvPoint *)cvGetSeqElem(result, 3);
 
-
-          if(getx(pt2)<getx(pt0))
+          if (getx(pt2) < getx(pt0))
           {
-            pt0=(CvPoint*)cvGetSeqElem( result, 1 );
-            pt1=(CvPoint*)cvGetSeqElem( result, 2 );
-            pt2=(CvPoint*)cvGetSeqElem( result, 3 );
-            pt3=(CvPoint*)cvGetSeqElem( result, 0 );
+            pt0 = (CvPoint *)cvGetSeqElem(result, 1);
+            pt1 = (CvPoint *)cvGetSeqElem(result, 2);
+            pt2 = (CvPoint *)cvGetSeqElem(result, 3);
+            pt3 = (CvPoint *)cvGetSeqElem(result, 0);
           }
 
           if (judgerect(pt0, pt1, pt2, pt3) == 1)
@@ -150,38 +148,38 @@ void ImageMatchingFront::digitSquares(IplImage *img, int minarea, int maxarea, g
               {
                 rect_list.count++;
                 gf_perception::Object object_msg;
-                object_msg.number=num;
-                object_msg.type=2;
-                if(campose==0)
+                object_msg.number = num;
+                object_msg.type = 2;
+                if (campose == 0)
                 {
-                  object_msg.center.x=rect.center.x;
-                  object_msg.center.y=rect.center.y;
-                  object_msg.size.x=rect.size.width ;
-                  object_msg.size.y=rect.size.height;
+                  object_msg.center.x = rect.center.x;
+                  object_msg.center.y = rect.center.y;
+                  object_msg.size.x = rect.size.width;
+                  object_msg.size.y = rect.size.height;
                 }
-                else if(campose==1)//右转
+                else if (campose == 1) //右转
                 {
-                  object_msg.center.x=rect.center.y;
-                  object_msg.center.y=480-rect.center.x;
-                  object_msg.size.x=rect.size.height ;
-                  object_msg.size.y=rect.size.width;
+                  object_msg.center.x = rect.center.y;
+                  object_msg.center.y = 480 - rect.center.x;
+                  object_msg.size.x = rect.size.height;
+                  object_msg.size.y = rect.size.width;
                 }
-                else if(campose==2)//左转
+                else if (campose == 2) //左转
                 {
-                  object_msg.center.x=640-rect.center.y;
-                  object_msg.center.y=rect.center.x;
-                  object_msg.size.x=rect.size.height ;
-                  object_msg.size.y=rect.size.width;
+                  object_msg.center.x = 640 - rect.center.y;
+                  object_msg.center.y = rect.center.x;
+                  object_msg.size.x = rect.size.height;
+                  object_msg.size.y = rect.size.width;
                 }
-                object_msg.size.z=rect.angle; 
+                object_msg.size.z = rect.angle;
                 rect_list.object.push_back(object_msg);
-                  #ifdef SHOW_IMAGE
-                Scalar color(rand() % 255, rand() % 255, rand() % 255);
-                cvLine(img, *pt0, *pt1, color, 8);
-                cvLine(img, *pt1, *pt2, color, 8);
-                cvLine(img, *pt2, *pt3, color, 8);
-                cvLine(img, *pt3, *pt0, color, 8);
-                #endif
+#ifdef SHOW_IMAGE
+// Scalar color(rand() % 255, rand() % 255, rand() % 255);
+// cvLine(img, *pt0, *pt1, color, 2);
+// cvLine(img, *pt1, *pt2, color, 2);
+// cvLine(img, *pt2, *pt3, color, 2);
+// cvLine(img, *pt3, *pt0, color, 2);
+#endif
               }
             }
           }
@@ -190,10 +188,10 @@ void ImageMatchingFront::digitSquares(IplImage *img, int minarea, int maxarea, g
       }
     }
   }
-  #ifdef SHOW_IMAGE
+#ifdef SHOW_IMAGE
   cvShowImage("Image window", img);
   cvWaitKey(3);
-  #endif
+#endif
   cvReleaseImage(&gray);
   cvReleaseImage(&pyr);
   cvReleaseImage(&tgray);
@@ -316,14 +314,19 @@ int ImageMatchingFront::t_rect(IplImage *img, CvPoint *pt0, CvPoint *pt1, CvPoin
   cvGetPerspectiveTransform(srcQuad, dstQuad, warp_matrix);
   //密集透视变换
   cvWarpPerspective(img, img_dst, warp_matrix);
-  #ifdef SHOW_IMAGE
-  // cvShowImage("Image window2", img_dst);
-  // cvWaitKey(3);
-  #endif
+#ifdef SHOW_IMAGE
+  cvShowImage("Image window2", img_dst);
+  cvWaitKey(3);
+#endif
 
-  // char ad[128]={0};
-  // sprintf(ad, "/home/ubuntu/GaoFen_Drone/src/gf_detection/resource/num2/%d.jpg", NS);NS++;
-  // cvSaveImage(ad, img_dst);
+  char ad[128] = {0};
+  sprintf(ad, "/home/ubuntu/GaoFen_Drone/src/gf_detection/resource/num5/%d.jpg", NS);
+  NS++;
+  cvSaveImage(ad, img_dst);
+
+  // Mat imgnum = cvarrToMat(img_dst,true);
+  // float num=hogsvm(imgnum);
+  // cout<<num<<endl;
 
   int num = getDigit(img_dst, img, pt0, pt2);
 
@@ -340,82 +343,198 @@ int ImageMatchingFront::t_rect(IplImage *img, CvPoint *pt0, CvPoint *pt1, CvPoin
 int ImageMatchingFront::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, CvPoint *pt2) //两张图片相减
 {
   IplImage *src = cvCloneImage(img);
-  IplImage *src_s = cvCreateImage(cvSize(50, 50), 8, 1);
-  IplImage *result = cvCreateImage(cvSize(50, 50), 8, 1);
+
   uchar *tmp;
   int tmp1;
   int min = 1000000;
   int serieNum = -1;
-  std::string resource_dir=ros::package::getPath("gf_detection");
-  cout<<"############   "<<resource_dir<<endl;
+  std::string resource_dir = ros::package::getPath("gf_detection");
 
+
+  //二值化
+  IplImage *src_s = cvCreateImage(cvSize(50, 50), 8, 1);
   cvCvtColor(src, src_s, CV_BGR2GRAY);
   cvThreshold(src_s, src_s, 0, 255, CV_THRESH_OTSU);
 
-  // for(int i=0;i<src_s->height;i++)
-  // {
-  //   for(int j=0;j<src_s->height;j++)
-  //   {
-      
-  //   }
-  // }
+#ifdef SHOW_IMAGE
+  cvShowImage("Image window2", src_s);
+  cvWaitKey(3);
+#endif
 
+  //裁剪数字
+  int wid = src_s->width;
+  int heig = src_s->height;
+  int ro[heig] = {0};
+  int co[wid] = {0};
+  int ct = 0, ce = wid - 1, rt = 0, re = heig - 1;
 
-  for (int h = 4; h <= 9; h++)
+  for (int i = 10; i < heig; i++)
   {
-    char name[128];
-    sprintf(name, "%s/resource/num2/%d.jpg",resource_dir.c_str(), h);
-    IplImage *timg = cvLoadImage(name, CV_LOAD_IMAGE_GRAYSCALE);
-    cvThreshold(timg, timg, 0, 255, CV_THRESH_OTSU);
-    
-    //imshow(name, Template);
-    cvAbsDiff(timg, src_s, result); //
-
-    int diff = 0;
-    for (int i = 0; i < result->height; i++)
+    for (int j = 0; j < wid; j++)
     {
-      for (int j = 0; j < result->width; j++)
+      uchar *tmp = (uchar *)(src_s->imageData + i * src_s->widthStep + j);
+      tmp1 = *tmp;
+      if (tmp1 == 0)
       {
-        uchar *tmp = (uchar *)(result->imageData + i * result->widthStep + j);
-        tmp1 = *tmp;
-        diff = diff + tmp1;
+        ro[i]++;
+        co[j]++;
       }
     }
-
-    if (diff < min)
-    {
-      min = diff;
-      serieNum = h;
-    }
-
-    cvReleaseImage(&timg);
   }
-  //cvShowImage( WINDOWname, result );
-  if (min < 50000)
+
+  int h_heig = heig / 2;
+  int h_wid = wid / 2;
+
+  for (int i = h_heig; i >= 0; i--)
   {
-    //printf("最小距离是%d ", min);
-    printf(" 数字是%d  Center %f,%f\n", serieNum, (pt0->x + pt2->x) / 2.0, (pt0->y + pt2->y) / 2.0);
-
-    char num[128];
-    sprintf(num, "%d", serieNum);
-
-    CvFont font;
-    cvInitFont(&font, CV_FONT_HERSHEY_COMPLEX, 0.5, 0.5, 1, 2, 8);
-    cvPutText(imgsrc, num, cvPoint((pt0->x + pt2->x) / 2, (pt0->y + pt2->y) / 2), &font, CV_RGB(255, 0, 0));
-
-    // cvShowImage("Image window",imgsrc);
-    //cvWaitKey(3);
+    if (ro[i] == 0)
+    {
+      rt = i + 1;
+      break;
+    }
   }
-  else{
-    serieNum=-1;
+  for (int i = h_heig; i <= heig - 1; i++)
+  {
+    if (ro[i] == 0)
+    {
+      re = i - 1;
+      break;
+    }
   }
+  for (int i = h_wid; i >= 0; i--)
+  {
+    if (co[i] == 0)
+    {
+      ct = i + 1;
+      break;
+    }
+  }
+  for (int i = h_wid; i <= wid - 1; i++)
+  {
+    if (co[i] == 0)
+    {
+      ce = i - 1;
+      break;
+    }
+  }
+
+  if (ct < ce && rt < re)
+  {
+    //裁剪
+    cvSetImageROI(src_s, cvRect(ct, rt, ce - ct + 1, re - rt + 1)); //设置源图像ROI
+    IplImage *cutdst;
+    CvSize size;
+    size.width = 15;
+    size.height = 30;
+    cutdst = cvCreateImage(size, src_s->depth, src_s->nChannels);
+    cvResize(src_s, cutdst, CV_INTER_CUBIC);
+    cvResetImageROI(src_s);
+#ifdef SHOW_IMAGE
+    cvShowImage("Image window3", cutdst);
+    cvWaitKey(3);
+#endif
+
+    // char ad[128]={0};
+    // sprintf(ad, "/home/jjt-204u/gaofen/src/gf_detection/resource/num3/%d.jpg", NS);NS++;
+    // cvSaveImage(ad, cutdst);
+
+    //识别
+    IplImage *result = cvCreateImage(cvSize(15, 30), 8, 1);
+    for (int h = 4; h <= 9; h++)
+    {
+      char name[128];
+      sprintf(name, "%s/resource/num4/%d.jpg", resource_dir.c_str(), h);
+      IplImage *timg = cvLoadImage(name, CV_LOAD_IMAGE_GRAYSCALE);
+      cvThreshold(timg, timg, 0, 255, CV_THRESH_OTSU);
+
+      cvAbsDiff(timg, cutdst, result); //
+
+      int diff = 0;
+      for (int i = 0; i < result->height; i++)
+      {
+        for (int j = 0; j < result->width; j++)
+        {
+          uchar *tmp = (uchar *)(result->imageData + i * result->widthStep + j);
+          tmp1 = *tmp;
+          diff = diff + tmp1;
+        }
+      }
+
+      if (diff < min)
+      {
+        min = diff;
+        serieNum = h;
+      }
+
+      cvReleaseImage(&timg);
+    }
+    cvReleaseImage(&cutdst);
+    cvReleaseImage(&result);
+
+
+    if (min < 50000)
+    {
+      //printf("最小距离是%d ", min);
+      printf("FFF  数字是%d  Center %f,%f\n", serieNum, (pt0->x + pt2->x) / 2.0, (pt0->y + pt2->y) / 2.0);
+
+      char num[128];
+      sprintf(num, "%d", serieNum);
+
+      // CvFont font;
+      // cvInitFont(&font, CV_FONT_HERSHEY_COMPLEX, 0.5, 0.5, 1, 2, 8);
+      // cvPutText(imgsrc, num, cvPoint((pt0->x + pt2->x) / 2, (pt0->y + pt2->y) / 2), &font, CV_RGB(255, 0, 0));
+
+      // cvShowImage("Image window",imgsrc);
+      //cvWaitKey(3);
+    }
+    else
+    {
+      serieNum = -1;
+    }
+  }
+  else
+  {
+    serieNum = -1;
+  }
+
   cvReleaseImage(&src);
   cvReleaseImage(&src_s);
-  cvReleaseImage(&result);
+
   return serieNum;
 }
 
-int main(int argc, char** argv)
+float ImageMatchingFront::hogsvm(Mat &img)
+{
+  resize(img, img, Size(64, 64));
+
+  Size win_size = Size(64, 64);
+  Size block_size = Size(8, 8);
+  Size block_stride = Size(8, 8);
+  Size cell_size = Size(8, 8);
+  int nbins = 9;
+  double win_sigma = 4;
+  double threshold_L2hys = 2.0000000000000001e-01;
+  bool gamma_correction = false;
+  int nlevels = 64;
+  HOGDescriptor hog(win_size, block_size, block_stride, cell_size, nbins, win_sigma, threshold_L2hys, gamma_correction, nlevels);
+
+  vector<float> descriptors;
+  hog.compute(img, descriptors);
+
+  //Ptr<ml::SVM>svm = ml::SVM::load<ml::SVM>("../resource/model.xml");
+  std::string resource_dir = ros::package::getPath("gf_detection") + "/resource/model.xml";
+  Ptr<ml::SVM> svm = ml::StatModel::load<ml::SVM>(resource_dir);
+
+  float res = svm->predict(descriptors);
+
+  //   svm.clear();
+  //   svm.load("../resource/model.xml");
+  //   int res=svm->predict(descriptors);
+
+  return res;
+}
+
+int main(int argc, char **argv)
 {
   ros::init(argc, argv, "image_front");
   ImageMatchingFront ic;

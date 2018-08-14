@@ -63,16 +63,20 @@ void AirsimControl::cb_object_front(const gf_perception::ObjectList &msg)
         {
             ROS_ERROR("****FIND OBJ %d %d %d %d", msg.object[i].number, msg.object[i].type, target_mode_count[msg.object[i].number][0], target_mode_count[msg.object[i].number][1]);
             ROS_ERROR("SIZE %f", msg.object[i].size.x * msg.object[i].size.y);
-            if (msg.object[i].type == 2 && msg.object[i].center.y > 450 && msg.object[i].size.x * msg.object[i].size.y > 5000)
-                continue;
+            // if (msg.object[i].type == 2 && msg.object[i].center.y > 450 && msg.object[i].size.x * msg.object[i].size.y > 5000)
+            // continue;
 
             if (msg.object[i].number == detect_num)
             {
                 object_front = msg.object[i];
-                if (msg.object[i].type == 1)
-                {
+                target_mode_count[detect_num][0]++;
+                if (target_mode_count[detect_num][0] > 5)
+
                     target_mode[detect_num] = 1;
-                }
+            }
+            else
+            {
+                target_mode_count[msg.object[i].number][0] = 0;
             }
             //     if (msg.object[i].number >= detect_num && msg.object[i].number < detect_num + 3)
             //     {
@@ -107,7 +111,7 @@ void AirsimControl::cb_object_down(const gf_perception::ObjectList &msg)
     msg_objects_down = msg;
     object_down = gf_perception::Object();
     if (detect_num == -1)
-        detect_num = 1;
+        detect_num = 0;
     if (msg.count > 0)
     {
         for (int i = 0; i < msg.object.size(); i++)
@@ -252,6 +256,7 @@ void AirsimControl::run()
     target_yaw = initial_yaw;
 
     ros::NodeHandle private_nh("~");
+
     while (ros::ok())
     {
 
@@ -274,6 +279,15 @@ void AirsimControl::run()
         control_yaw = 0;
         hover_flag = 0;
         std_msgs::Int16 front_cam_pose_msg;
+
+        if (detect_num == 0)
+        {
+            ROS_INFO("SSSSSSS   %d", forward_count);
+            if (go_forward(control_pitch, 500))
+            {
+                detect_num = 5;
+            }
+        }
         //数字
         if (detect_num > 0 && detect_num < 11)
         {
@@ -281,31 +295,41 @@ void AirsimControl::run()
             if (target_mode[detect_num] == 0)
             {
                 //寻找
-                ROS_ERROR("Detect : %d  Target Unknown & Search  %d,%d", detect_num, up_down_mode, down_search_mode);
+                ROS_ERROR("Detect : %d  Target Unknown & Search  %d , %d", detect_num, up_down_mode, down_search_mode);
 
-                if (up_down_mode == 2 || up_down_mode == 3)
+                if (up_down_mode == 0 || up_down_mode == 1)
                 {
+                    if (target_height > initial_height + 4)
+                        target_height = initial_height + 3;
                     if (msg_depth_count.vector.z > 0.6)
                     {
                         target_height += 0.05;
                     }
-                    // if (msg_depth_count.vector.z ==0){
-                    //     target_height -= 0.05;
-                    // }
-                    // else if (msg_depth_count.vector.z > 0.7 && msg_depth_count.vector.z <0.8)
-                    //     target_height += 0.01;
-                    // else if (msg_depth_count.vector.z < 0.4  && msg_depth_count.vector.z > 0)
-                    //     target_height -= 0.01;
                 }
-                else if (up_down_mode == 0 || up_down_mode == 1)
+                else if (up_down_mode == 2 || up_down_mode == 3)
                     target_height = initial_height + 7;
-                if (down_search_mode == 0)
+
+                if (down_search_mode == 0) //转折 高度检测
                 {
-                    down_search_mode = 1;
-                    leftright_count = leftright_count / abs(leftright_count);
+                    if (abs(target_height - msg_barometer.vector.x) < 0.2)
+                    {
+                        if (up_down_mode == 2)
+                        {
+                            if (go_forward(control_pitch, 30))
+                            {
+                                down_search_mode = 1;
+                                leftright_count = leftright_count / abs(leftright_count);
+                            }
+                        }
+                        else if (up_down_mode == 0)
+                        {
+                            down_search_mode = 1;
+                            leftright_count = leftright_count / abs(leftright_count);
+                        }
+                    }
                 }
 
-                if (down_search_mode == 1)
+                if (down_search_mode == 1) //左右搜索
                 {
                     ROS_INFO("%d ERRRR  %f,%f,%f", leftright_count, msg_depth_count.vector.x, msg_depth_count.vector.y, msg_depth_count.vector.z);
                     search(control_pitch, control_roll, target_yaw);
@@ -313,43 +337,49 @@ void AirsimControl::run()
                     {
                         if (up_down_mode == 3)
                         {
-                            down_search_mode = 2;
+                            down_search_mode = 0;
                             up_down_mode = -1;
-                            target_height = initial_height + 7;
+                            target_height = initial_height + 3;
                         }
                         if (up_down_mode == 1)
                         {
-                            target_height = initial_height + 3;
-                            down_search_mode = 2;
+                            target_height = initial_height + 7;
+                            down_search_mode = 0;
                         }
                         up_down_mode++;
                     }
                 }
 
-                if (down_search_mode == 2)
-                {
-                    if (abs(target_height - msg_barometer.vector.x) < 0.3)
-                    {
-                        if (up_down_mode == 0)
-                        {
-                            if (go_forward(control_pitch, control_roll, target_yaw))
-                            {
-                                down_search_mode = 1;
-                            }
-                        }
-                        else
-                        {
-                            down_search_mode = 1;
-                        }
-                    }
-                }
+                // if (down_search_mode == 2)
+                // {
+                //     if (abs(target_height - msg_barometer.vector.x) < 0.3)
+                //     {
+                //         if (up_down_mode == 0)
+                //         {
+                //             if (go_forward(control_pitch, 30))
+                //             {
+                //                 down_search_mode = 1;
+                //             }
+                //         }
+                //         else
+                //         {
+                //             down_search_mode = 1;
+                //         }
+                //     }
+                // }
             }
             //障碍圈
             if (target_mode[detect_num] == 1)
             {
-                if (detect_state == 0)
+                if (detect_state == 0) //寻找
                 {
-                    target_height = initial_height + 3;
+                    ROS_ERROR("Detect : %d  Target Front & Search  count:%d", detect_num, detect_count);
+                    if (target_height > initial_height + 4)
+                        target_height = initial_height + 3;
+                    if (msg_depth_count.vector.z > 0.6)
+                    {
+                        target_height += 0.05;
+                    }
                     search(control_pitch, control_roll, target_yaw);
                     if (object_front.number == detect_num)
                     {
@@ -360,28 +390,29 @@ void AirsimControl::run()
                         detect_count = 0;
                     }
                     if (detect_count > 3)
-                        detect_state = 2;
+                    {
+                        detect_state = 1;
+                        down_search_mode = 0;
+                        up_down_mode = 0;
+                        leftright_count = -1;
+                        detect_count = 0;
+                        control_client->hover();
+                        sleep(2);
+                    }
                 }
-                else if (detect_state == 2)
+                else if (detect_state == 1) //数字对齐
                 {
+                    ROS_ERROR("Detect : %d  Target Front1 & Found (%f,%f)  %f  %d", detect_num, object_front.center.x, object_front.center.y, object_front.size.x * object_front.size.y, detect_count);
 
                     if (object_front.number != detect_num)
                     {
                         lost_count++;
-                        if (lost_count > 3)
+                        if (lost_count > 20)
                         {
-                            if (detect_num == 4 && target_height < initial_height + 6)
-                            {
-                                target_height += 0.03;
-                            }
-                            else if (detect_num == 5 && target_height > initial_height - 1)
-                            {
-                                target_height -= 0.03;
-                            }
+ROS_INFO("not found");
                             detect_state = 0;
                             lost_count = 0;
-                            control_client->hover();
-                            sleep(1);
+                            hover_flag=1;
                         }
                     }
                     else
@@ -391,46 +422,92 @@ void AirsimControl::run()
 
                         if (abs(object_front.center.x - 320.0) < 100)
                         {
-                            if (object_front.size.x * object_front.size.y > 900)
+                            float object_size = object_front.size.x * object_front.size.y;
+                            if (object_size > 4000)
                                 control_pitch = 0.0015;
-                            else if (object_front.size.x * object_front.size.y < 200)
-                                control_pitch = -0.0025;
-                            else if (object_front.size.x * object_front.size.y > 200)
-                                control_pitch = -0.0015;
+                            else if (object_size < 1000)
+                                control_pitch = -0.005;
+                            else if (object_size > 1000 && object_size < 3500)
+                                control_pitch = -0.003;
+                            else
+                                control_pitch = 0.0;
                         }
 
-                        control_roll = pid_roll.calc(object_front.center.x - 320.0);
-                        if (object_front.center.y < 250)
+                        control_roll = pid_roll.calc((object_front.center.x - 320.0) * 0.5);
+                        if (object_front.center.y < 270)
                             target_height += 0.002;
-                        if (object_front.center.y > 230)
+                        if (object_front.center.y > 290)
+                            target_height -= 0.002;
+                        if (abs(object_front.center.x - 320.0) < 30)
+                        {
+                            hover_flag = 1;
+                            detect_count++;
+                            if (detect_count > 2)
+                            {
+                                detect_state = 2;
+                            }
+                        }
+                        else
+                        {
+                            detect_count = 0;
+                        }
+                    }
+                }
+                else if (detect_state == 2)
+                {
+                    ROS_ERROR("Detect : %d  Target Front2 & Found (%f,%f)  %f", detect_num, object_front.center.x, object_front.center.y, object_front.size.x * object_front.size.y);
+                    float object_size = object_front.size.x * object_front.size.y;
+                    if (object_size > 4000)
+                        control_pitch = 0.0015;
+                    else
+                        control_pitch = -0.02;
+                    if (object_front.number != detect_num)
+                    {
+                        lost_count++;
+                        control_pitch=0;
+                        if (lost_count > 30)
+                        {
+                            detect_state = 0;
+                            lost_count = 0;
+                            control_client->hover();
+                            sleep(1);
+                        }
+                    }
+                    else
+                    {
+                        lost_count=0;
+                        ROS_INFO("Circle %d : %f  %f %f", circle_count, msg_circle.vector.x, msg_circle.vector.y, msg_circle.vector.z);
+                        if (object_front.center.y < 270)
+                            target_height += 0.002;
+                        if (object_front.center.y > 290)
                             target_height -= 0.002;
 
-                        if (abs(target_yaw - tf::getYaw(msg_imu.orientation) < 0.05))
+                        control_roll = pid_roll.calc((object_front.center.x - 320.0) * 0.5);
+                        if (msg_circle.vector.x && msg_circle.vector.y && msg_circle.vector.z > 180)
                         {
-                            if (msg_circle.vector.x && msg_circle.vector.y)
-                            {
-                                circle_count++;
-                                if (circle_count > 3)
-                                {
-                                    circle_count = 0;
-                                    detect_state = 3;
-                                    control_client->hover();
-                                    sleep(1);
-                                }
-                            }
-                            else
+                            circle_count++;
+                            if (circle_count > 2)
                             {
                                 circle_count = 0;
+                                detect_state = 3;
+                                control_client->hover();
+                                sleep(1);
                             }
                         }
-                        ROS_INFO("%f  thet %f  SIZe %f", (object_front.center.x - 320), object_front.size.x * object_front.size.y);
+                        else
+                        {
+                            circle_count = 0;
+                        }
                     }
                 }
                 else if (detect_state == 3)
                 {
+                    ROS_ERROR("Detect : %d  Target Front & Circle (%f,%f)  %f", detect_num, msg_circle.vector.x, msg_circle.vector.y, msg_circle.vector.z);
+
                     target_yaw = initial_yaw;
                     if (msg_circle.vector.x && msg_circle.vector.y)
                     {
+                        lost_count = 0;
                         if (msg_circle.vector.y > 245)
                             target_height -= 0.02;
                         else if (msg_circle.vector.y < 225)
@@ -442,17 +519,17 @@ void AirsimControl::run()
                         if (abs(msg_circle.vector.y - 240) < 30 && abs(msg_circle.vector.x - 320) < 30)
                         {
 
-                            if (msg_circle.vector.z > 70)
+                            if (msg_circle.vector.z > 300)
                                 control_pitch = 0.01;
-                            if (msg_circle.vector.z > 70)
+                            if (msg_circle.vector.z > 200)
                                 control_pitch = 0.003;
-                            else if (msg_circle.vector.z > 60)
+                            else if (msg_circle.vector.z > 180)
                                 control_pitch = 0.001;
                             else
                                 control_pitch = -0.001;
                         }
 
-                        if (abs(msg_circle.vector.y - 240) < 15 && abs(msg_circle.vector.x - 320) < 15 && msg_circle.vector.z > 80)
+                        if (abs(msg_circle.vector.y - 240) < 15 && abs(msg_circle.vector.x - 320) < 15 && msg_circle.vector.z > 180)
                         {
                             hover_flag = 1;
                             circle_center_count++;
@@ -472,23 +549,22 @@ void AirsimControl::run()
                     else
                     {
                         hover_flag = 1;
+                        lost_count++;
+                        if (lost_count > 10)
+                            detect_state = 1;
                     }
                 }
                 else if (detect_state == 4)
                 {
+                    ROS_ERROR("Detect : %d  Target Front & GO FORWARD ", detect_num);
                     if (msg_circle.vector.y > 240)
                         target_height -= 0.02;
                     else
                     {
                         target_height += 0.02;
                     }
-                    // target_height+=0.05;
-                    go_through_count++;
-                    if (go_through_count < 50)
-                        control_pitch = -0.05;
-                    else if (go_through_count < 100)
-                        control_pitch = 0.05;
-                    else
+                    if (go_forward(control_pitch, 15))
+
                     {
                         control_client->hover();
                         sleep(1);
@@ -554,7 +630,7 @@ void AirsimControl::run()
 
                     if (down_search_mode == 0) //向前一段
                     {
-                        if (go_forward(control_pitch, control_roll, target_yaw))
+                        if (go_forward(control_pitch, 30))
                         {
                             down_search_mode = 1;
                             if (detect_num == 1 || detect_num == 10) //1号或10号 往右飞
@@ -882,11 +958,11 @@ void AirsimControl::search(double &pitch, double &roll, double &yaw)
     if (leftright_count > 0) //右
     {
         leftright_count++;
-        if (abs(leftright_count) < 40)
+        if (abs(leftright_count) < 50)
         {
             roll = 0.08;
         }
-        else if (abs(leftright_count) > 40 && abs(leftright_count) < 70)
+        else if (abs(leftright_count) > 50 && abs(leftright_count) < 80)
         {
             roll = 0.05;
         }
@@ -897,7 +973,7 @@ void AirsimControl::search(double &pitch, double &roll, double &yaw)
         }
         if (msg_depth_count.vector.y > 0.3)
         {
-            roll = -0.3;
+            roll = -0.1;
             search_flag = 1;
         }
         else if (search_flag == 1 && msg_depth_count.vector.y > 0 && msg_depth_count.vector.y < msg_pre_depth_count.vector.y && abs(leftright_count) > 50)
@@ -913,7 +989,7 @@ void AirsimControl::search(double &pitch, double &roll, double &yaw)
         leftright_count--;
         if (abs(leftright_count) < 50)
         {
-            roll = -0.08;
+            roll = -0.07;
         }
         else if (abs(leftright_count) > 50 && abs(leftright_count) < 80)
         {
@@ -926,7 +1002,7 @@ void AirsimControl::search(double &pitch, double &roll, double &yaw)
         }
         if (msg_depth_count.vector.x > 0.3)
         {
-            roll = 0.3;
+            roll = 0.1;
             search_flag = 1;
         }
         else if (search_flag == 1 && msg_depth_count.vector.x > 0 && msg_depth_count.vector.x < msg_pre_depth_count.vector.x && abs(leftright_count) > 50)
@@ -971,30 +1047,46 @@ void AirsimControl::search(double &pitch, double &roll, double &yaw)
     ROS_INFO("%f %f", msg_depth_count.vector.x, msg_depth_count.vector.y);
 }
 
-bool AirsimControl::go_forward(double &pitch, double &roll, double &yaw)
+bool AirsimControl::go_forward(double &pitch, double count)
 {
-    yaw = initial_yaw;
-    if (abs(tf::getYaw(msg_imu.orientation) - yaw) < 0.02)
+    if (abs(tf::getYaw(msg_imu.orientation) - initial_yaw) < 0.02)
     {
         forward_count++;
-        if (forward_count < 80)
+        if (count >= 0)
         {
-            pitch = -0.05;
-        }
-        else if (forward_count > 80 && forward_count < 200)
-        {
-            pitch = 0.0;
-        }
-        else if (forward_count > 200 && forward_count < 240)
-        {
-            pitch = 0.15;
+            if (forward_count < 80)
+            {
+                pitch = -0.07;
+            }
+            else if (forward_count > 80 && forward_count < 80 + count)
+            {
+                pitch = 0.0;
+            }
+            else if (forward_count > 80 + count)
+            {
+                control_client->hover();
+                sleep(3);
+                forward_count = 0;
+                return 1;
+            }
         }
         else
         {
-            control_client->hover();
-            sleep(2);
-            forward_count = 0;
-            return 1;
+            if (forward_count < 80 + count)
+            {
+                pitch = -0.05;
+            }
+            else if (forward_count > 80 + count && forward_count < 80 + count + 5)
+            {
+                pitch = 0.0;
+            }
+            else if (forward_count > 80 + count + 5)
+            {
+                control_client->hover();
+                sleep(3);
+                forward_count = 0;
+                return 1;
+            }
         }
     }
     ROS_ERROR("##############33");

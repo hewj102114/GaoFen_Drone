@@ -76,6 +76,6 @@ class AirsimControl{
     float initial_yaw;
 
     void search(double& pitch,double& roll,double& yaw);
-    bool go_forward(double& pitch,double& roll,double& yaw);
+    bool go_forward(double& pitch,double count);
 
 };

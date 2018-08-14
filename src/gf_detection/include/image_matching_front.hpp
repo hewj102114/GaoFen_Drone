@@ -7,6 +7,13 @@
 #include <gf_perception/Object.h>
 #include <gf_perception/ObjectList.h>
 #include "std_msgs/Int16.h"
+
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/ml/ml.hpp>
+
 class ImageMatchingFront
 {
   public:
@@ -19,6 +26,7 @@ class ImageMatchingFront
     ImageMatchingFront();
     void imageCb(const sensor_msgs::ImageConstPtr &msg);
     void imageProcess(cv::Mat &,gf_perception::ObjectList &);
+    float hogsvm(cv::Mat &img);
     void camposeCallback(const std_msgs::Int16::ConstPtr& msg);
     int campose;
 

@@ -344,7 +344,7 @@ int ImageMatching::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, CvPoi
   int min = 1000000;
   int serieNum = -1;
   std::string resource_dir=ros::package::getPath("gf_detection");
-  cout<<"############   "<<resource_dir<<endl;
+
   for (int h = 0; h <= 10; h++)
   {
     char name[128];
@@ -380,7 +380,7 @@ int ImageMatching::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, CvPoi
   if (min < 50000)
   {
     //printf("最小距离是%d ", min);
-    printf(" 数字是%d  Center %f,%f\n", serieNum, (pt0->x + pt2->x) / 2.0, (pt0->y + pt2->y) / 2.0);
+    printf(" DDD  数字是%d  Center %f,%f\n", serieNum, (pt0->x + pt2->x) / 2.0, (pt0->y + pt2->y) / 2.0);
 
     char num[128];
     sprintf(num, "%d", serieNum);

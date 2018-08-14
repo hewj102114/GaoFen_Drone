@@ -7,3 +7,4 @@ build/*
 devel/*
 *.a
 *.bag
+src/gf_detection/resource/*
