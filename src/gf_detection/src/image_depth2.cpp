@@ -173,7 +173,7 @@ public:
         }
       }
     }
-    imshow("ggg", Gray);
+    // imshow("ggg", Gray);
     geometry_msgs::Vector3Stamped circle_msg;
     if (n_circle > 0)
     {

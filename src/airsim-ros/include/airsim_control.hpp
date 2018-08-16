@@ -25,6 +25,8 @@ class AirsimControl{
     ros::Subscriber sub_baromrter;
     ros::Subscriber sub_object_front;
     ros::Subscriber sub_object_down;
+    ros::Subscriber sub_object_aruco_down;
+    ros::Subscriber sub_object_aruco_front;
     ros::Subscriber sub_object_circle;
     ros::Subscriber sub_depth_count,sub_depth_count_full;
 
@@ -37,6 +39,8 @@ class AirsimControl{
     void cb_barometer(const geometry_msgs::Vector3Stamped& msg);
     void cb_object_front(const gf_perception::ObjectList& msg);
     void cb_object_down(const gf_perception::ObjectList& msg);
+    void cb_object_aruco_down(const gf_perception::ObjectList& msg);
+    void cb_object_aruco_front(const gf_perception::ObjectList& msg);
     void cb_object_circle(const geometry_msgs::Vector3Stamped& msg);
     void cb_depth_count(const geometry_msgs::Vector3Stamped& msg);
     void cb_depth_count_full(const geometry_msgs::Vector3Stamped& msg);
@@ -52,9 +56,12 @@ class AirsimControl{
     geometry_msgs::Vector3Stamped msg_pre_depth_count,msg_pre_depth_count_full;
     gf_perception::ObjectList msg_objects_front;
     gf_perception::ObjectList msg_objects_down;
+    gf_perception::ObjectList msg_objects_aruco_down;
+    gf_perception::ObjectList msg_objects_aruco_front;
     gf_perception::Object object_front;
     gf_perception::Object object_down;
     int error_code,pre_error_code;
+    std::vector<int> num_queue;
     
     void run();
     int target_mode_count[11][2];

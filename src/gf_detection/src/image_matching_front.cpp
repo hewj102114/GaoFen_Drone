@@ -189,7 +189,7 @@ void ImageMatchingFront::digitSquares(IplImage *img, int minarea, int maxarea, g
     }
   }
 #ifdef SHOW_IMAGE
-  cvShowImage("Image window", img);
+  cvShowImage("Image Front", img);
   cvWaitKey(3);
 #endif
   cvReleaseImage(&gray);
@@ -315,7 +315,7 @@ int ImageMatchingFront::t_rect(IplImage *img, CvPoint *pt0, CvPoint *pt1, CvPoin
   //密集透视变换
   cvWarpPerspective(img, img_dst, warp_matrix);
 #ifdef SHOW_IMAGE
-  cvShowImage("Image window2", img_dst);
+  // cvShowImage("Image window2", img_dst);
   cvWaitKey(3);
 #endif
 
@@ -350,14 +350,13 @@ int ImageMatchingFront::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, 
   int serieNum = -1;
   std::string resource_dir = ros::package::getPath("gf_detection");
 
-
   //二值化
   IplImage *src_s = cvCreateImage(cvSize(50, 50), 8, 1);
   cvCvtColor(src, src_s, CV_BGR2GRAY);
   cvThreshold(src_s, src_s, 0, 255, CV_THRESH_OTSU);
 
 #ifdef SHOW_IMAGE
-  cvShowImage("Image window2", src_s);
+  // cvShowImage("Front Image", src_s);
   cvWaitKey(3);
 #endif
 
@@ -470,7 +469,6 @@ int ImageMatchingFront::getDigit(IplImage *img, IplImage *imgsrc, CvPoint *pt0, 
     }
     cvReleaseImage(&cutdst);
     cvReleaseImage(&result);
-
 
     if (min < 50000)
     {

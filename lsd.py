@@ -10,10 +10,113 @@ from cv_bridge import CvBridge, CvBridgeError
 from matplotlib import pyplot as plt
 from skimage import img_as_float, img_as_ubyte
 brightness_list = []
+k_left_list=[]
+k_right_list=[]
+D_left_list=[]
+D_right_list=[]
+
+
+def line_filter(status,lines):
+    
+    global drawing
+    left_lines = []
+    right_lines = []
+    # print '#',len(lines)
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        length = math.sqrt(pow(x1-x2, 2)+pow(y1-y2, 2))
+        cv2.line(drawing, (x1, y1), (x2, y2),
+                 (0, 0, 0), 1, lineType=cv2.LINE_AA)
+        
+        # print(abs((y1-y2)*1.0/(x1-x2)-(240-y2)*1.0/(320-x2)))
+        if status==1: #low height
+            if abs(y1-y2) > 5 and abs(x1-x2) > 5 and length > 50:
+                if y1 < 300 and y2 < 300 and min(x1, x2) < 300 and max(x1, x2) < 400:
+                    left_lines.append(line)
+                    
+                if y1 < 300 and y2 < 300 and min(x1, x2) > 640-400 and max(x1, x2) > 640-300:
+                    right_lines.append(line)
+        else:
+            if min(x1, x2) < 300 and max(x1, x2) < 400:
+                left_lines.append(line)
+                
+            if min(x1, x2) > 640-400 and max(x1, x2) > 640-300:
+                right_lines.append(line)
+                
+    left_lines.sort(key=lambda obj: math.sqrt(
+        pow(obj[0][0]-obj[0][2], 2)+pow(obj[0][1]-obj[0][3], 2)), reverse=True)
+    right_lines.sort(key=lambda obj: math.sqrt(
+        pow(obj[0][0]-obj[0][2], 2)+pow(obj[0][1]-obj[0][3], 2)), reverse=True)
+
+    avg_k_l = 0
+    D_l = 0
+    if len(left_lines)==1:
+        x1, y1, x2, y2 = left_lines[0][0]
+        avg_k_l=(y1-y2)*1.0/(x1-x2)
+        cv2.line(drawing, (x1, y1), (x2, y2),
+                         (0, 255, 0), 1, lineType=cv2.LINE_AA)
+    elif  len(left_lines)>1:
+        x1, y1, x2, y2 = left_lines[0][0]
+        k1=(y1-y2)*1.0/(x1-x2)
+        D1=(x1*y2-y1*x2)*1.0/(x1-x2)
+        cv2.line(drawing, (x1, y1), (x2, y2),
+                         (0, 255, 0), 1, lineType=cv2.LINE_AA)
+        x1, y1, x2, y2 = left_lines[1][0]
+        k2=(y1-y2)*1.0/(x1-x2)
+        D2=(x1*y2-y1*x2)*1.0/(x1-x2)
+        cv2.line(drawing, (x1, y1), (x2, y2),
+                         (0, 255, 0), 1, lineType=cv2.LINE_AA)
+        avg_k_l=0.5*(k1+k2)
+        D_l=abs(D1-D2)
+
+    k_left_list.append(avg_k_l)
+    if len(k_left_list) > 5:
+        k_left_list.pop(0)
+    k_l_median = np.median(k_left_list)
+    D_left_list.append(D_l)
+    if len(D_left_list) > 5:
+        D_left_list.pop(0)
+    D_l_median = np.median(D_left_list)
+
+    avg_k_r = 0
+    D_r = 0
+    if len(right_lines)==1:
+        x1, y1, x2, y2 = right_lines[0][0]
+        avg_k_r=(y1-y2)*1.0/(x1-x2)
+        cv2.line(drawing, (x1, y1), (x2, y2),
+                         (0, 255, 0), 1, lineType=cv2.LINE_AA)
+    elif  len(right_lines)>1:
+        x1, y1, x2, y2 = right_lines[0][0]
+        k1=(y1-y2)*1.0/(x1-x2)
+        D1=(x1*y2-y1*x2)*1.0/(x1-x2)
+        cv2.line(drawing, (x1, y1), (x2, y2),
+                         (0, 255, 0), 1, lineType=cv2.LINE_AA)
+        x1, y1, x2, y2 = right_lines[1][0]
+        k2=(y1-y2)*1.0/(x1-x2)
+        D2=(x1*y2-y1*x2)*1.0/(x1-x2)
+        cv2.line(drawing, (x1, y1), (x2, y2),
+                         (0, 255, 0), 1, lineType=cv2.LINE_AA)
+        avg_k_r=0.5*(k1+k2)
+        D_r=abs(D1-D2)
+
+    k_right_list.append(avg_k_r)
+    if len(k_right_list) > 5:
+        k_right_list.pop(0)
+    k_r_median = np.median(k_right_list)
+    D_right_list.append(D_r)
+    if len(D_right_list) > 5:
+        D_right_list.pop(0)
+    D_r_median = np.median(D_right_list) 
+    
+    print k_l_median,k_r_median,D_l_median,D_r_median
+    return k_l_median,k_r_median
+
+
+
 
 
 def callback(msg):
-    global image
+    global image,drawing
     bridge = CvBridge()
     try:
         image = bridge.imgmsg_to_cv2(msg, desired_encoding="8UC3")
@@ -43,10 +146,11 @@ def callback(msg):
                 imgmax-imgmin, 8, 255, cv2.THRESH_BINARY_INV)
     mask = delta_thresh & brightness_mask
     mask = cv2.erode(mask, np.ones((5, 5), np.uint8), 2)
+    mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), 1)
     # mask=cv2.blur(mask,(5,5))
-    cv2.imshow("mask", delta_thresh)
-    cv2.imshow("mask22", brightness_mask)
-    cv2.imshow("mask1", mask)
+    # cv2.imshow("mask", delta_thresh)
+    # cv2.imshow("mask22", brightness_mask)
+    # cv2.imshow("mask1", mask)
 
     drawing = image1.copy()
     imgg, contours, hierarchy = cv2.findContours(
@@ -60,71 +164,33 @@ def callback(msg):
     img_contour = cv2.drawContours(
         img_contour, new_contours, -1, (255, 255, 255), -1)
     edges = cv2.Canny(img_contour, 50, 150)
-    cv2.imshow("b", img_contour)
     # lines = cv2.HoughLinesP(img_contour, 1, np.pi / 180, 50,minLineLength=80, maxLineGap=5)
 
     lsd = cv2.createLineSegmentDetector(cv2.LSD_REFINE_STD, 0.5)
     lines = lsd.detect(img_contour)[0]
-    left_lines = []
-    right_lines = []
-    # print '#',len(lines)
-    for line in lines:
-        x1, y1, x2, y2 = line[0]
-        length = math.sqrt(pow(x1-x2, 2)+pow(y1-y2, 2))
-        cv2.line(drawing, (x1, y1), (x2, y2),
-                 (0, 0, 0), 1, lineType=cv2.LINE_AA)
-        if abs(y1-y2) > 5 and abs(x1-x2) > 5 and length > 50:
-            # print(abs((y1-y2)*1.0/(x1-x2)-(240-y2)*1.0/(320-x2)))
+    
+    kl,kr = line_filter(1,lines)
+    msg=Vector3Stamped()
+    msg.header.stamp=rospy.Time.now()
+    msg.vector.x=kl
+    msg.vector.y=kr
+    pub_l.publish(msg)
 
-            if y1 < 300 and y2 < 300 and min(x1, x2) < 300 and max(x1, x2) < 400:
-                left_lines.append(line)
-                
-            if y1 < 300 and y2 < 300 and min(x1, x2) > 640-400 and max(x1, x2) > 640-300:
-                right_lines.append(line)
-                
-    left_lines.sort(key=lambda obj: math.sqrt(
-        pow(obj[0][0]-obj[0][2], 2)+pow(obj[0][1]-obj[0][3], 2)), reverse=True)
-    right_lines.sort(key=lambda obj: math.sqrt(
-        pow(obj[0][0]-obj[0][2], 2)+pow(obj[0][1]-obj[0][3], 2)), reverse=True)
 
-    avg_k_l = 0
-    n = 0
-    for left_line in left_lines:
-        n += 1
-        if (n > 2):
-            break
-        x1, y1, x2, y2 = left_line[0]
-        avg_k_l+=(y1-y2)*1.0/(x1-x2)
-        cv2.line(drawing, (x1, y1), (x2, y2),
-                         (0, 255, 0), 1, lineType=cv2.LINE_AA)
-    #    print x1,x2,y1,y2,avg_k_l
-    if len(left_lines)>1:
-        avg_k_l=avg_k_l/2
-    n=0
-    avg_k_r=0
-    for right_line in right_lines:
-        n += 1
-        if (n > 2):
-            break
-        x1, y1, x2, y2 = right_line[0]
-        avg_k_r+=(y1-y2)*1.0/(x1-x2)
-        cv2.line(drawing, (x1, y1), (x2, y2),
-                         (255, 0, 0), 1, lineType=cv2.LINE_AA)
-
-    if len(right_lines)>1:
-        avg_k_r=avg_k_r/2
-
-    print avg_k_l,avg_k_r
+    
+    kl,kr =line_filter(0,lines)
+    msg.vector.x=kl
+    msg.vector.y=kr
+    pub_h.publish(msg)
 
     cv2.imshow("dd",drawing)
     cv2.waitKey(1)
-    # plt.show()
 
 
 
 rospy.init_node('lsd')
 subrgb = rospy.Subscriber('/airsim/image/front/rgb', Image, callback)
-# pub = rospy.Publisher('airsim/depth/circle', Vector3Stamped, queue_size=1)
-# pub_err = rospy.Publisher('airsim/depth/error', Int16, queue_size=1)
+pub_h = rospy.Publisher('airsim/line/high', Vector3Stamped, queue_size=1)
+pub_l = rospy.Publisher('airsim/line/low', Vector3Stamped, queue_size=1)
 rospy.spin()
 

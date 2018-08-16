@@ -15,7 +15,11 @@ AirsimControl::AirsimControl()
     sub_object_front = nh.subscribe("airsim/object/front", 1, &AirsimControl::cb_object_front, this);
     sub_object_down = nh.subscribe("airsim/object/down", 1, &AirsimControl::cb_object_down, this);
     sub_object_circle = nh.subscribe("airsim/depth/circle", 1, &AirsimControl::cb_object_circle, this);
+    sub_object_aruco_down = nh.subscribe("airsim/object/aruco/down", 1, &AirsimControl::cb_object_aruco_down, this);
+    sub_object_aruco_front = nh.subscribe("airsim/object/aruco/front", 1, &AirsimControl::cb_object_aruco_front, this);
+
     sub_depth_count = nh.subscribe("airsim/depth/count", 1, &AirsimControl::cb_depth_count, this);
+    sub_depth_count_full = nh.subscribe("airsim/depth/count_full", 1, &AirsimControl::cb_depth_count_full, this);
     pub_front_camera_pose = nh.advertise<std_msgs::Int16>("airsim/front_camera/pose_state", 1);
     pub_height_filter = nh.advertise<geometry_msgs::Vector3Stamped>("airsim/height_filter", 1);
     detect_num = -1;
@@ -53,56 +57,58 @@ void AirsimControl::cb_depth_count(const geometry_msgs::Vector3Stamped &msg)
     msg_pre_depth_count = msg_depth_count;
     msg_depth_count = msg;
 }
+void AirsimControl::cb_depth_count_full(const geometry_msgs::Vector3Stamped &msg)
+{
+    msg_pre_depth_count_full = msg_depth_count_full;
+    msg_depth_count_full = msg;
+}
 void AirsimControl::cb_object_front(const gf_perception::ObjectList &msg)
 {
     msg_objects_front = msg;
     object_front = gf_perception::Object();
+    int n = -1;
+    double size = 0;
     if (msg.count > 0)
     {
         for (int i = 0; i < msg.object.size(); i++)
         {
-            ROS_ERROR("****FIND OBJ %d %d %d %d", msg.object[i].number, msg.object[i].type, target_mode_count[msg.object[i].number][0], target_mode_count[msg.object[i].number][1]);
-            ROS_ERROR("SIZE %f", msg.object[i].size.x * msg.object[i].size.y);
+            // ROS_ERROR("****FIND OBJ %d %d %d %d", msg.object[i].number, msg.object[i].type, target_mode_count[msg.object[i].number][0], target_mode_count[msg.object[i].number][1]);
+            // ROS_ERROR("SIZE %f", msg.object[i].size.x * msg.object[i].size.y);
             // if (msg.object[i].type == 2 && msg.object[i].center.y > 450 && msg.object[i].size.x * msg.object[i].size.y > 5000)
             // continue;
-
-            if (msg.object[i].number == detect_num)
+            if (msg.object[i].size.x * msg.object[i].size.y > size)
             {
-                object_front = msg.object[i];
+                size = msg.object[i].size.x * msg.object[i].size.y;
+                n = i;
+            }
+        }
+
+        num_queue.push_back(msg.object[n].number);
+    }
+    else
+    {
+        num_queue.push_back(-1);
+    }
+    if (num_queue.size() > 10)
+        num_queue.erase(num_queue.begin());
+    if (n != -1)
+    {
+        int num = count(num_queue.begin(), num_queue.begin(), detect_num);
+
+        if (msg.object[n].number == detect_num)
+        {
+            if (num * 1.0 / num_queue.size() > 0.6 && num_queue.size() > 3)
+            {
+                object_front = msg.object[n];
                 target_mode_count[detect_num][0]++;
-                if (target_mode_count[detect_num][0] > 5)
+                if (target_mode_count[detect_num][0] > 3)
 
                     target_mode[detect_num] = 1;
             }
-            else
-            {
-                target_mode_count[msg.object[i].number][0] = 0;
-            }
-            //     if (msg.object[i].number >= detect_num && msg.object[i].number < detect_num + 3)
-            //     {
-            //         if (msg.object[i].type == 1)
-            //         {
-            //             target_mode_count[msg.object[i].number][0] += 1;
-            //         }
-            //         else if (msg.object[i].type == 2)
-            //         {
-            //             target_mode_count[msg.object[i].number][1] += 2;
-            //         }
-            //         else if (msg.object[i].type == 3)
-            //         {
-            //             target_mode_count[msg.object[i].number][1] += 5;
-            //         }
-            //     }
-
-            //     if (target_mode_count[msg.object[i].number][0] > target_mode_count[msg.object[i].number][1] * 4 && target_mode_count[msg.object[i].number][0] > 30)
-            //     {
-            //         target_mode[msg.object[i].number] = 1;
-            //     }
-            //     if (target_mode_count[msg.object[i].number][1] > target_mode_count[msg.object[i].number][0] * 2 && target_mode_count[msg.object[i].number][1] > 30)
-            //     {
-            //         target_mode[msg.object[i].number] = 2;
-            //     }
-            // }
+        }
+        else
+        {
+            target_mode_count[msg.object[n].number][0] = 0;
         }
     }
 }
@@ -125,6 +131,16 @@ void AirsimControl::cb_object_down(const gf_perception::ObjectList &msg)
         }
     }
 }
+
+void AirsimControl::cb_object_aruco_down(const gf_perception::ObjectList &msg)
+{
+    msg_objects_aruco_down = msg;
+}
+void AirsimControl::cb_object_aruco_front(const gf_perception::ObjectList &msg)
+{
+    msg_objects_aruco_front = msg;
+}
+
 void AirsimControl::cb_object_circle(const geometry_msgs::Vector3Stamped &msg)
 {
     msg_circle = msg;
@@ -233,6 +249,9 @@ void AirsimControl::run()
     int down_search_mode = 0; //0 - 前视 1 -向右 2 - 向左
     float target_distance, pre_target_distance;
     ros::Rate rate(30);
+    //aruco
+    int aruco_count = 0;
+    int aruco_detect_mode = 0;
 
     while (1)
     {
@@ -254,6 +273,8 @@ void AirsimControl::run()
     target_height = msg_barometer.vector.x;
     initial_yaw = tf::getYaw(msg_imu.orientation);
     target_yaw = initial_yaw;
+
+    vector<int> aruco_ids;
 
     ros::NodeHandle private_nh("~");
 
@@ -283,13 +304,16 @@ void AirsimControl::run()
         if (detect_num == 0)
         {
             ROS_INFO("SSSSSSS   %d", forward_count);
-            if (go_forward(control_pitch, 500))
-            {
-                detect_num = 5;
-            }
+            // if (go_forward(control_pitch, 700)) //500
+            // {
+            //     detect_num = 11;
+            //     target_height = initial_height + 7.5;
+            // }
+            search(control_pitch, control_roll, target_yaw);
+            // detect_num = 1;
         }
         //数字
-        if (detect_num > 0 && detect_num < 11)
+        else if (detect_num > 0 && detect_num < 11)
         {
             //板子未知类型 探索
             if (target_mode[detect_num] == 0)
@@ -313,15 +337,16 @@ void AirsimControl::run()
                 {
                     if (abs(target_height - msg_barometer.vector.x) < 0.2)
                     {
-                        if (up_down_mode == 2)
+                        if (up_down_mode == -1)
                         {
-                            if (go_forward(control_pitch, 30))
+                            if (go_forward(control_pitch, -70))
                             {
+                                up_down_mode = 0;
                                 down_search_mode = 1;
                                 leftright_count = leftright_count / abs(leftright_count);
                             }
                         }
-                        else if (up_down_mode == 0)
+                        else
                         {
                             down_search_mode = 1;
                             leftright_count = leftright_count / abs(leftright_count);
@@ -338,7 +363,7 @@ void AirsimControl::run()
                         if (up_down_mode == 3)
                         {
                             down_search_mode = 0;
-                            up_down_mode = -1;
+                            up_down_mode = -2;
                             target_height = initial_height + 3;
                         }
                         if (up_down_mode == 1)
@@ -391,7 +416,7 @@ void AirsimControl::run()
                     }
                     if (detect_count > 3)
                     {
-                        detect_state = 1;
+                        detect_state = 2;
                         down_search_mode = 0;
                         up_down_mode = 0;
                         leftright_count = -1;
@@ -400,7 +425,7 @@ void AirsimControl::run()
                         sleep(2);
                     }
                 }
-                else if (detect_state == 1) //数字对齐
+                else if (detect_state == 2) //数字对齐
                 {
                     ROS_ERROR("Detect : %d  Target Front1 & Found (%f,%f)  %f  %d", detect_num, object_front.center.x, object_front.center.y, object_front.size.x * object_front.size.y, detect_count);
 
@@ -409,10 +434,10 @@ void AirsimControl::run()
                         lost_count++;
                         if (lost_count > 20)
                         {
-ROS_INFO("not found");
+                            ROS_INFO("not found");
                             detect_state = 0;
                             lost_count = 0;
-                            hover_flag=1;
+                            hover_flag = 1;
                         }
                     }
                     else
@@ -420,14 +445,14 @@ ROS_INFO("not found");
                         lost_count = 0;
                         target_yaw = initial_yaw;
 
-                        if (abs(object_front.center.x - 320.0) < 100)
+                        if (abs(object_front.center.x - 320.0) < 150)
                         {
                             float object_size = object_front.size.x * object_front.size.y;
-                            if (object_size > 4000)
+                            if (object_size > 4500)
                                 control_pitch = 0.0015;
                             else if (object_size < 1000)
                                 control_pitch = -0.005;
-                            else if (object_size > 1000 && object_size < 3500)
+                            else if (object_size > 1000 && object_size < 4000)
                                 control_pitch = -0.003;
                             else
                                 control_pitch = 0.0;
@@ -438,68 +463,88 @@ ROS_INFO("not found");
                             target_height += 0.002;
                         if (object_front.center.y > 290)
                             target_height -= 0.002;
-                        if (abs(object_front.center.x - 320.0) < 30)
-                        {
-                            hover_flag = 1;
-                            detect_count++;
-                            if (detect_count > 2)
-                            {
-                                detect_state = 2;
-                            }
-                        }
-                        else
-                        {
-                            detect_count = 0;
-                        }
-                    }
-                }
-                else if (detect_state == 2)
-                {
-                    ROS_ERROR("Detect : %d  Target Front2 & Found (%f,%f)  %f", detect_num, object_front.center.x, object_front.center.y, object_front.size.x * object_front.size.y);
-                    float object_size = object_front.size.x * object_front.size.y;
-                    if (object_size > 4000)
-                        control_pitch = 0.0015;
-                    else
-                        control_pitch = -0.02;
-                    if (object_front.number != detect_num)
-                    {
-                        lost_count++;
-                        control_pitch=0;
-                        if (lost_count > 30)
-                        {
-                            detect_state = 0;
-                            lost_count = 0;
-                            control_client->hover();
-                            sleep(1);
-                        }
-                    }
-                    else
-                    {
-                        lost_count=0;
-                        ROS_INFO("Circle %d : %f  %f %f", circle_count, msg_circle.vector.x, msg_circle.vector.y, msg_circle.vector.z);
-                        if (object_front.center.y < 270)
-                            target_height += 0.002;
-                        if (object_front.center.y > 290)
-                            target_height -= 0.002;
 
-                        control_roll = pid_roll.calc((object_front.center.x - 320.0) * 0.5);
-                        if (msg_circle.vector.x && msg_circle.vector.y && msg_circle.vector.z > 180)
+                        if (abs(target_yaw - tf::getYaw(msg_imu.orientation) < 0.1))
                         {
-                            circle_count++;
-                            if (circle_count > 2)
+                            if (msg_circle.vector.x && msg_circle.vector.y && msg_circle.vector.z > 180)
+                            {
+                                circle_count++;
+                                if (circle_count > 3)
+                                {
+                                    circle_count = 0;
+                                    detect_state = 3;
+                                    control_client->hover();
+                                    sleep(1);
+                                }
+                            }
+                            else
                             {
                                 circle_count = 0;
-                                detect_state = 3;
-                                control_client->hover();
-                                sleep(1);
                             }
                         }
-                        else
-                        {
-                            circle_count = 0;
-                        }
+
+                        // if (abs(object_front.center.x - 320.0) < 30)
+                        // {
+                        //     hover_flag = 1;
+                        //     detect_count++;
+                        //     if (detect_count > 2)
+                        //     {
+                        //         detect_state = 2;
+                        //     }
+                        // }
+                        // else
+                        // {
+                        //     detect_count = 0;
+                        // }
                     }
                 }
+                // else if (detect_state == 2)
+                // {
+                //     ROS_ERROR("Detect : %d  Target Front2 & Found (%f,%f)  %f", detect_num, object_front.center.x, object_front.center.y, object_front.size.x * object_front.size.y);
+                //     float object_size = object_front.size.x * object_front.size.y;
+                //     if (object_size > 4000)
+                //         control_pitch = 0.0015;
+                //     else
+                //         control_pitch = -0.02;
+                //     if (object_front.number != detect_num)
+                //     {
+                //         lost_count++;
+                //         control_pitch = 0;
+                //         if (lost_count > 30)
+                //         {
+                //             detect_state = 0;
+                //             lost_count = 0;
+                //             control_client->hover();
+                //             sleep(1);
+                //         }
+                //     }
+                //     else
+                //     {
+                //         lost_count = 0;
+                //         ROS_INFO("Circle %d : %f  %f %f", circle_count, msg_circle.vector.x, msg_circle.vector.y, msg_circle.vector.z);
+                //         if (object_front.center.y < 270)
+                //             target_height += 0.002;
+                //         if (object_front.center.y > 290)
+                //             target_height -= 0.002;
+
+                //         control_roll = pid_roll.calc((object_front.center.x - 320.0) * 0.5);
+                //         if (msg_circle.vector.x && msg_circle.vector.y && msg_circle.vector.z > 180)
+                //         {
+                //             circle_count++;
+                //             if (circle_count > 2)
+                //             {
+                //                 circle_count = 0;
+                //                 detect_state = 3;
+                //                 control_client->hover();
+                //                 sleep(1);
+                //             }
+                //         }
+                //         else
+                //         {
+                //             circle_count = 0;
+                //         }
+                //     }
+                // }
                 else if (detect_state == 3)
                 {
                     ROS_ERROR("Detect : %d  Target Front & Circle (%f,%f)  %f", detect_num, msg_circle.vector.x, msg_circle.vector.y, msg_circle.vector.z);
@@ -521,15 +566,15 @@ ROS_INFO("not found");
 
                             if (msg_circle.vector.z > 300)
                                 control_pitch = 0.01;
-                            if (msg_circle.vector.z > 200)
+                            if (msg_circle.vector.z > 250)
                                 control_pitch = 0.003;
-                            else if (msg_circle.vector.z > 180)
+                            else if (msg_circle.vector.z > 200)
                                 control_pitch = 0.001;
                             else
                                 control_pitch = -0.001;
                         }
 
-                        if (abs(msg_circle.vector.y - 240) < 15 && abs(msg_circle.vector.x - 320) < 15 && msg_circle.vector.z > 180)
+                        if (abs(msg_circle.vector.y - 240) < 15 && abs(msg_circle.vector.x - 320) < 15 && msg_circle.vector.z > 200)
                         {
                             hover_flag = 1;
                             circle_center_count++;
@@ -563,7 +608,7 @@ ROS_INFO("not found");
                     {
                         target_height += 0.02;
                     }
-                    if (go_forward(control_pitch, 15))
+                    if (go_forward(control_pitch, 25))
 
                     {
                         control_client->hover();
@@ -630,14 +675,14 @@ ROS_INFO("not found");
 
                     if (down_search_mode == 0) //向前一段
                     {
-                        if (go_forward(control_pitch, 30))
-                        {
-                            down_search_mode = 1;
-                            if (detect_num == 1 || detect_num == 10) //1号或10号 往右飞
-                                leftright_count = 1;
-                            else
-                                leftright_count = -1;
-                        }
+                        // if (go_forward(control_pitch, 30))
+                        // {
+                        down_search_mode = 1;
+                        if (detect_num == 1 || detect_num == 10) //1号或10号 往右飞
+                            leftright_count = 1;
+                        else
+                            leftright_count = -1;
+                        // }
                     }
                     if (down_search_mode == 1) //左右循环
                     {
@@ -740,34 +785,200 @@ ROS_INFO("not found");
                     ROS_INFO("LAND");
                     land();
                     ROS_INFO("LANd Finish");
-                    detect_num++;
-                    detect_state = 0;
+
                     pid_height.init(kp, ki, kd, pid_max);
                     takeoff(&pid_height);
+                    detect_state = 6;
+                    if (detect_num == 10)
+                    {
+                        detect_num++;
+                        detect_state = 0;
+                        target_height = initial_height + 7.5;
+                    }
+                }
+                else if (detect_state == 6)
+                {
+                    ROS_ERROR("Target Down Go Forward  %d", object_front.number);
+                    if (detect_num > 2)
+                        target_height = initial_height + 3;
+                    else
+                        target_height = initial_height + 7;
+
+                    if (go_forward(control_pitch, -5))
+                    {
+                        detect_num++;
+                        detect_state = 0;
+                    }
+                    for (int i = 0; i < msg_objects_front.object.size(); i++)
+                    {
+                        if (msg_objects_front.object[i].number == detect_num + 1)
+                        {
+                            control_client->hover();
+                            sleep(1);
+                            detect_num++;
+                            detect_state = 0;
+                            break;
+                        }
+                    }
                 }
                 else
                 {
                     detect_state = 0;
                 }
-
-                // if (tf::getYaw(msg_imu.orientation) < initial_yaw + 0.8 && tf::getYaw(msg_imu.orientation) > initial_yaw - 0.8)
-                // {
-                //     front_cam_pose_msg.data = 0;
-                // }
-                // else if (tf::getYaw(msg_imu.orientation) > initial_yaw + 0.8)
-                // {
-                //     front_cam_pose_msg.data = 2;
-                // }
-                // else
-                // {
-                //     front_cam_pose_msg.data = 1;
-                // }
             }
         }
         //二维码
         else
         {
-            ;
+            // ROS_ERROR("ARUCO %d : ", detect_state); //刹车
+            if (detect_state == 0)
+            {
+                if (abs(target_height - msg_barometer.vector.x) < 0.2)
+                {
+                    go_forward(control_pitch, 600);
+                }
+                ROS_INFO(" %f  %d", msg_depth_count_full.vector.x, aruco_count);
+
+                if (aruco_count == 0)
+                {
+                    if (msg_depth_count_full.vector.x > 0.1)
+                    {
+                        aruco_count = 1;
+                        control_client->hover();
+                        sleep(2);
+                    }
+                }
+                if (aruco_count > 0 && aruco_count < 40)
+                {
+                    control_pitch = 0.05;
+                    aruco_count++;
+                }
+                else if (aruco_count == 40)
+                {
+                    target_yaw = initial_yaw - 3.14;
+                    forward_count = 0;
+                    control_client->hover();
+                    sleep(3);
+                    detect_state = 1;
+                    aruco_count = 0;
+                }
+            }
+            else if (detect_state == 1) //第一层
+            {
+                target_height = initial_height + 5;
+
+                if (abs(tf::getYaw(msg_imu.orientation) - target_yaw) < 0.1)
+                {
+                    search(control_pitch, control_roll, target_yaw);
+                    if (abs(leftright_count) == 1)
+                    {
+                        aruco_count++;
+                    }
+                    for (int i = 0; i < msg_objects_aruco_front.object.size(); i++)
+                    {
+                        float aruco_size = msg_objects_aruco_front.object[i].size.x * msg_objects_aruco_front.object[i].size.y;
+                        if (aruco_size > 45 * 45 && count(aruco_ids.begin(), aruco_ids.end(), msg_objects_aruco_front.object[i].number) == 0)
+                            aruco_ids.push_back(msg_objects_aruco_front.object[i].number);
+                        cout << msg_objects_aruco_front.object[i].number << endl;
+                    }
+                    if (aruco_count > 1)
+                    {
+                        aruco_count = 0;
+                        detect_state = 2;
+                    }
+                }
+            }
+            else if (detect_state == 2) //其他层
+            {
+                ROS_INFO("aruco_detect_mode  %d", aruco_detect_mode);
+                if (aruco_detect_mode == 0) //向前
+                {
+                    // ROS_INFO("go_forward  %d  %f", aruco_count, abs(target_height - msg_barometer.vector.x));
+                    target_height = initial_height + 7.5;
+                    if (abs(target_height - msg_barometer.vector.x) < 0.5)
+                    {
+                        aruco_count++;
+                        if (aruco_count > 0 && aruco_count < 15)
+                        {
+                            control_pitch = -0.05;
+                        }
+                        else if (aruco_count == 15)
+                        {
+                            aruco_detect_mode = 1;
+                            leftright_count = -1;
+                            aruco_count = 0;
+                        }
+                    }
+                }
+                else if (aruco_detect_mode == 1) //左右
+                {
+                    target_height = initial_height + 9;
+                    if (abs(target_height - msg_barometer.vector.x) < 0.2)
+                    {
+                        search(control_pitch, control_roll, target_yaw);
+                    }
+                    for (std::vector<int>::const_iterator i = aruco_ids.begin(); i != aruco_ids.end(); ++i)
+                        std::cout << *i << ' ';
+                    std::cout << endl;
+                    for (int i = 0; i < msg_objects_aruco_down.object.size(); i++)
+                    {
+                        vector<int>::iterator ret = std::find(aruco_ids.begin(), aruco_ids.end(), msg_objects_aruco_down.object[i].number);
+                        ROS_ERROR("##  %f  %d ", msg_objects_aruco_down.object[i].center.x, msg_objects_aruco_down.object[i].number);
+
+                        if (abs(msg_objects_aruco_down.object[i].center.x - 320) < 150 && ret == aruco_ids.end())
+                        {
+                            ROS_ERROR("stop");
+                            control_client->hover();
+                            sleep(2);
+                            aruco_detect_mode = 2;
+                        }
+                    }
+                }
+                else if (aruco_detect_mode == 2)
+                {
+                    target_height = initial_height + 5;
+                    if (abs(target_height - msg_barometer.vector.x) < 0.2)
+                    {
+                        for (int i = 0; i < msg_objects_aruco_front.object.size(); i++)
+                        {
+                            float aruco_size = msg_objects_aruco_front.object[i].size.x * msg_objects_aruco_front.object[i].size.y;
+                            ROS_ERROR("Found  %d", aruco_size);
+                            if (aruco_size > 30 * 30 && aruco_size < 45 * 45)
+                            {
+                                control_pitch = -0.01;
+                            }
+                            else if (aruco_size > 45 * 45)
+                            {
+                                vector<int>::iterator ret = std::find(aruco_ids.begin(), aruco_ids.end(), msg_objects_aruco_down.object[i].number);
+
+                                if (ret == aruco_ids.end())
+                                {
+                                    aruco_ids.push_back(msg_objects_aruco_front.object[i].number);
+                                }
+
+                                control_client->hover();
+                                sleep(2);
+                                aruco_detect_mode = 1;
+                                aruco_count = 0;
+                                leftright_count = leftright_count / abs(leftright_count);
+                            }
+                            else
+                            {
+                                aruco_count++;
+                                if (aruco_count > 10)
+                                {
+                                    aruco_detect_mode = 1;
+                                    aruco_count = 0;
+                                    leftright_count = leftright_count / abs(leftright_count);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                //向左
+                //if ,目标 比对是否存在->降落  ->起飞
+            }
         }
 
         float current_yaw = tf::getYaw(msg_imu.orientation);
@@ -845,8 +1056,10 @@ bool AirsimControl::takeoff(PIDctrl *pid)
         filtered_height = one_filter_back(msg_barometer.vector.x, filtered_height);
 
         double d_height;
-
-        d_height = initial_height + 8 - filtered_height;
+        if (detect_num > 2)
+            d_height = initial_height + 4 - filtered_height;
+        else
+            d_height = initial_height + 8 - filtered_height;
 
         double d_throttle = pid->calc(d_height);
         move(0, 0, d_throttle, 0, 5);
@@ -960,63 +1173,66 @@ void AirsimControl::search(double &pitch, double &roll, double &yaw)
         leftright_count++;
         if (abs(leftright_count) < 50)
         {
-            roll = 0.08;
-        }
-        else if (abs(leftright_count) > 50 && abs(leftright_count) < 80)
-        {
             roll = 0.05;
         }
-        else
+        else if (abs(leftright_count) > 50)
         {
-            // pitch = 0.0;
-            roll = 0.0;
+            if (abs(leftright_count) % 50 > 25)
+                roll = 0.01;
+            else
+                roll = 0.0;
         }
         if (msg_depth_count.vector.y > 0.3)
         {
-            roll = -0.1;
-            search_flag = 1;
-        }
-        else if (search_flag == 1 && msg_depth_count.vector.y > 0 && msg_depth_count.vector.y < msg_pre_depth_count.vector.y && abs(leftright_count) > 50)
-        {
+            // roll = -0.1;
+            // search_flag = 1;
             control_client->hover();
-            sleep(2);
+            sleep(3);
             leftright_count = -1;
-            search_flag = 0;
         }
+        // else if (search_flag == 1 && msg_depth_count.vector.y > 0 && msg_depth_count.vector.y < msg_pre_depth_count.vector.y && abs(leftright_count) > 50)
+        // {
+        //     control_client->hover();
+        //     sleep(3);
+        //     leftright_count = -1;
+        //     search_flag = 0;
+        // }
     }
     else //左
     {
         leftright_count--;
         if (abs(leftright_count) < 50)
         {
-            roll = -0.07;
-        }
-        else if (abs(leftright_count) > 50 && abs(leftright_count) < 80)
-        {
             roll = -0.05;
         }
-        else
+        else if (abs(leftright_count) > 50)
         {
-            // pitch = 0.0;
-            roll = 0.0;
+            if (abs(leftright_count) % 50 > 25)
+                roll = -0.01;
+            else
+                roll = 0.0;
         }
+
         if (msg_depth_count.vector.x > 0.3)
         {
-            roll = 0.1;
-            search_flag = 1;
-        }
-        else if (search_flag == 1 && msg_depth_count.vector.x > 0 && msg_depth_count.vector.x < msg_pre_depth_count.vector.x && abs(leftright_count) > 50)
-        {
+            // roll = 0.1;
+            // search_flag = 1;
             control_client->hover();
-            sleep(2);
+            sleep(3);
             leftright_count = 1;
-            search_flag = 0;
-            ROS_INFO("TURN");
         }
+        // else if (search_flag == 1 && msg_depth_count.vector.x > 0 && msg_depth_count.vector.x < msg_pre_depth_count.vector.x && abs(leftright_count) > 50)
+        // {
+        //     control_client->hover();
+        //     sleep(2);
+        //     leftright_count = 1;
+        //     search_flag = 0;
+        //     ROS_INFO("TURN");
+        // }
     }
-    if (abs(leftright_count) > 400)
-        leftright_count = -leftright_count / abs(leftright_count);
-    ROS_INFO(" SEA %d,%f,%f,%f", leftright_count, msg_depth_count.vector.x, msg_depth_count.vector.y, msg_depth_count.vector.z);
+    // if (abs(leftright_count) > 500)
+    //     leftright_count = -leftright_count / abs(leftright_count);
+    ROS_INFO("## SEARCH %d,%f,%f,%f", leftright_count, msg_depth_count.vector.x, msg_depth_count.vector.y, msg_depth_count.vector.z);
 
     // if (abs(leftright_count) < 50)
     // {
@@ -1047,51 +1263,84 @@ void AirsimControl::search(double &pitch, double &roll, double &yaw)
     ROS_INFO("%f %f", msg_depth_count.vector.x, msg_depth_count.vector.y);
 }
 
+// bool AirsimControl::go_forward(double &pitch, double count)
+// {
+//     if (abs(tf::getYaw(msg_imu.orientation) - initial_yaw) < 0.02)
+//     {
+//         forward_count++;
+//         if (count >= 0)
+//         {
+//             if (forward_count < 80)
+//             {
+//                 pitch = -0.07;
+//             }
+//             else if (forward_count > 80 && forward_count < 80 + count)
+//             {
+//                 pitch = 0.0;
+//             }
+//             else if (forward_count > 80 + count)
+//             {
+//                 control_client->hover();
+//                 sleep(3);
+//                 forward_count = 0;
+//                 return 1;
+//             }
+//         }
+//         else
+//         {
+//             if (forward_count < 80 + count)
+//             {
+//                 pitch = -0.05;
+//             }
+//             else if (forward_count > 80 + count && forward_count < 80 + count + 5)
+//             {
+//                 pitch = 0.0;
+//             }
+//             else if (forward_count > 80 + count + 5)
+//             {
+//                 control_client->hover();
+//                 sleep(3);
+//                 forward_count = 0;
+//                 return 1;
+//             }
+//         }
+//     }
+//     ROS_ERROR("############  %d  %f", forward_count, pitch);
+//     return 0;
+// }
+
 bool AirsimControl::go_forward(double &pitch, double count)
 {
     if (abs(tf::getYaw(msg_imu.orientation) - initial_yaw) < 0.02)
     {
         forward_count++;
-        if (count >= 0)
+        if (forward_count < 40)
         {
-            if (forward_count < 80)
+            pitch = -0.05;
+        }
+        else if (forward_count > 40 && forward_count < 40 + count)
+        {
+            if (forward_count % 40 > 20)
             {
-                pitch = -0.07;
+                pitch = -0.01;
             }
-            else if (forward_count > 80 && forward_count < 80 + count)
+            else
             {
-                pitch = 0.0;
-            }
-            else if (forward_count > 80 + count)
-            {
-                control_client->hover();
-                sleep(3);
-                forward_count = 0;
-                return 1;
+                pitch = -0.0;
             }
         }
-        else
+        else if (forward_count > 40 + count)
         {
-            if (forward_count < 80 + count)
-            {
-                pitch = -0.05;
-            }
-            else if (forward_count > 80 + count && forward_count < 80 + count + 5)
-            {
-                pitch = 0.0;
-            }
-            else if (forward_count > 80 + count + 5)
-            {
-                control_client->hover();
-                sleep(3);
-                forward_count = 0;
-                return 1;
-            }
+            control_client->hover();
+            sleep(3);
+            forward_count = 0;
+            return 1;
         }
     }
-    ROS_ERROR("##############33");
+    ROS_INFO("## FORWARD  %d  %f", forward_count, pitch);
     return 0;
 }
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "airsim_control");

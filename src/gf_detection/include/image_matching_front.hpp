@@ -30,6 +30,7 @@ class ImageMatchingFront
     void camposeCallback(const std_msgs::Int16::ConstPtr& msg);
     int campose;
 
+
   private:
     void digitSquares(IplImage *img, int minarea, int maxarea,gf_perception::ObjectList &rect_list);
     double angle(CvPoint *pt1, CvPoint *pt2, CvPoint *pt0);
