@@ -91,8 +91,13 @@ def callback_front_rgb(msg):
         image_front_rgb = bridge.imgmsg_to_cv2(msg, desired_encoding="8UC3")
     except CvBridgeError as error:
         print(error)
+    
     gray_front_rgb = cv2.cvtColor(image_front_rgb, cv2.COLOR_BGR2GRAY)
-    gray_depth = gray_front_rgb & image_depth
+    try:
+        gray_depth = gray_front_rgb & image_depth
+    except NameError as error:
+        print(error)
+        return    
     aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_ARUCO_ORIGINAL)
     parameters = cv2.aruco.DetectorParameters_create()
     corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(
@@ -123,7 +128,7 @@ def callback_front_rgb(msg):
                           (corners2[i][0][2][0], corners2[i][0][2][1]), (0, 255, 0), 2)
                 sizex = abs(corners[i][0][0][0]-corners[i][0][2][0])
                 sizey = abs(corners[i][0][0][1]-corners[i][0][2][1])
-                if sizex*sizey>45*45:
+                if sizex*sizey>43*43:
                     cv2.imwrite(save_path+'%d.jpg' % ids2[i], image_front_rgb)
                     save_pfm(save_path+'%d.pfm' % ids2[i], image_depth_float)
 

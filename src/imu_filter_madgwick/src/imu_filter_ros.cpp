@@ -339,7 +339,11 @@ void ImuFilterRos::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
   imu_msg->orientation_covariance[8] = orientation_variance_;
 
   imu_publisher_.publish(imu_msg);
-
+  if (isnan(q0))
+  {
+    initialized_=false;
+    ROS_ERROR("IMU DATA ERROR NAN");
+  }  
   if(publish_debug_topics_)
   {
     geometry_msgs::Vector3Stamped rpy;

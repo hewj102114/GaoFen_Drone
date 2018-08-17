@@ -87,6 +87,8 @@ public:
     int max = 10;
     int min = 0;
 
+    double minVal;
+    minMaxLoc(depthRaw,&minVal,NULL,NULL,NULL);
     Mat Gray = Mat(nr, nc, CV_8UC1);
 
     for (int i = 0; i < nr; i++)
@@ -212,6 +214,7 @@ public:
     count_msg.vector.y= countNonZero(right)*1.0/(countNonZero(mask_right));
     count_msg.vector.z= countNonZero(down)*1.0/(countNonZero(mask_down));
     count_full_msg.vector.x= countNonZero(up)*1.0/(countNonZero(mask_up));
+    count_full_msg.vector.y=minVal;
     pub_depth_count.publish(count_msg);
     pub_depth_count_full.publish(count_full_msg);
     // imshow("depth1", up);

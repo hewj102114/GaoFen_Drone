@@ -8,6 +8,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <std_msgs/Int16.h>
+#include <geometry_msgs/Polygon.h>
 
 #include "vehicles/multirotor/api/MultirotorRpcLibClient.hpp"
 #include "PID.h"
@@ -29,6 +30,7 @@ class AirsimControl{
     ros::Subscriber sub_object_aruco_front;
     ros::Subscriber sub_object_circle;
     ros::Subscriber sub_depth_count,sub_depth_count_full;
+    ros::Subscriber sub_line;
 
     ros::Publisher pub_front_camera_pose;
     ros::Publisher pub_height_filter;
@@ -44,6 +46,8 @@ class AirsimControl{
     void cb_object_circle(const geometry_msgs::Vector3Stamped& msg);
     void cb_depth_count(const geometry_msgs::Vector3Stamped& msg);
     void cb_depth_count_full(const geometry_msgs::Vector3Stamped& msg);
+    void cb_line(const geometry_msgs::Polygon& msg);
+
     
 
     
@@ -60,6 +64,7 @@ class AirsimControl{
     gf_perception::ObjectList msg_objects_aruco_front;
     gf_perception::Object object_front;
     gf_perception::Object object_down;
+    geometry_msgs::Polygon msg_line;
     int error_code,pre_error_code;
     std::vector<int> num_queue;
     
@@ -81,6 +86,7 @@ class AirsimControl{
     int running_count,leftright_count,forward_count;
     int search_flag;
     float initial_yaw;
+    int aruco_lost_flag;
 
     void search(double& pitch,double& roll,double& yaw);
     bool go_forward(double& pitch,double count);
